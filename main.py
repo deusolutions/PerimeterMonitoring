@@ -55,7 +55,7 @@ class PerimeterMonitor:
         
         # Инициализация дополнительных модулей
         if config.PORT_SCAN_ENABLED:
-            self.port_scanner = PortScanner(self.db, self.notifier)
+            self.port_scanner = PortScanner(self.db, config)
         
         if config.DNS_MONITOR_ENABLED:
             self.dns_monitor = DNSMonitor(self.db, self.notifier)
