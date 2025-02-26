@@ -13,15 +13,19 @@
                 <dt class="col-sm-3">Домен</dt>
                 <dd class="col-sm-9">{{ cert_state.domain }}</dd>
                 <dt class="col-sm-3">Издатель</dt>
-                <dd class="col-sm-9">{{ cert_state.issuer }}</dd>
+                <dd class="col-sm-9">{{ cert_state.issuer or 'N/A' }}</dd>
+                <dt class="col-sm-3">Организация</dt>
+                <dd class="col-sm-9">{{ cert_state.organization or 'N/A' }}</dd>
                 <dt class="col-sm-3">Действителен с</dt>
                 <dd class="col-sm-9">{{ cert_state.not_before.strftime('%H:%M:%S %d.%m.%Y') if cert_state.not_before else 'N/A' }}</dd>
                 <dt class="col-sm-3">Действителен до</dt>
                 <dd class="col-sm-9">{{ cert_state.not_after.strftime('%H:%M:%S %d.%m.%Y') if cert_state.not_after else 'N/A' }}</dd>
                 <dt class="col-sm-3">Осталось дней</dt>
-                <dd class="col-sm-9">{{ cert_state.days_to_expiry }}</dd>
+                <dd class="col-sm-9">{{ cert_state.days_to_expiry or 'N/A' }}</dd>
                 <dt class="col-sm-3">Последняя проверка</dt>
-                <dd class="col-sm-9">{{ cert_state.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</dd>
+                <dd class="col-sm-9">{{ cert_state.check_time.strftime('%H:%M:%S %d.%m.%Y') if cert_state.check_time else 'N/A' }}</dd>
+                <dt class="col-sm-3">Ошибка</dt>
+                <dd class="col-sm-9">{{ cert_state.error or 'N/A' }}</dd>
             </dl>
             <a href="{{ url_for('certificates') }}" class="btn btn-primary">Назад</a>
         </div>

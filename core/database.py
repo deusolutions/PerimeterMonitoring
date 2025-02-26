@@ -18,6 +18,7 @@ class Database:
             self.connection = sqlite3.connect(self.db_name, check_same_thread=False)
             self.connection.row_factory = sqlite3.Row
             self._create_tables()
+            self._migrate_database()
             logger.info(f"База данных {self.db_name} инициализирована")
         except Exception as e:
             logger.error(f"Ошибка при инициализации базы данных: {str(e)}")
@@ -124,6 +125,17 @@ class Database:
         ''')
         self.connection.commit()
     
+    def _migrate_database(self) -> None:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute("ALTER TABLE ip_states ADD COLUMN description TEXT")
+            logger.info("Миграция: добавлен столбец description в ip_states")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                logger.error(f"Ошибка миграции: {str(e)}")
+        self.connection.commit()
+
+    # Остальные методы остаются без изменений, если ты уже применил их из предыдущих ответов
     def save_ip_state(self, state: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
@@ -150,11 +162,11 @@ class Database:
     def get_ip_state(self, ip_address: str) -> Optional[Dict[str, Any]]:
         cursor = self.connection.cursor()
         try:
-            cursor.execute('SELECT data FROM ip_states WHERE ip_address = ?', (ip_address,))
+            cursor.execute('SELECT * FROM ip_states WHERE ip_address = ?', (ip_address,))
             row = cursor.fetchone()
             if row:
-                data = json.loads(row[0])
-                if "scan_time" in data:
+                data = dict(row)
+                if "scan_time" in data and data["scan_time"]:
                     data["scan_time"] = datetime.fromisoformat(data["scan_time"])
                 return data
             return None
@@ -203,32 +215,43 @@ class Database:
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
                 state_copy["url"],
-                1 if state_copy["is_up"] else 0,
-                state_copy["status_code"],
-                state_copy["response_time"],
-                state_copy["error"],
-                state_copy["check_time"],
+                1 if state_copy.get("is_up", False) else 0,
+                state_copy.get("status_code"),
+                state_copy.get("response_time"),
+                state_copy.get("error"),
+                state_copy.get("check_time", datetime.now().isoformat()),
                 json.dumps(state_copy)
             ))
             self.connection.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении состояния сайта {state['url']}: {str(e)}")
+            logger.error(f"Ошибка при сохранении состояния сайта {state.get('url', 'unknown')}: {str(e)}")
             self.connection.rollback()
     
     def get_website_state(self, url: str) -> Optional[Dict[str, Any]]:
         cursor = self.connection.cursor()
         try:
-            cursor.execute('SELECT data FROM website_states WHERE url = ?', (url,))
+            cursor.execute('SELECT * FROM website_states WHERE url = ?', (url,))
             row = cursor.fetchone()
             if row:
-                data = json.loads(row[0])
-                if "check_time" in data:
+                data = dict(row)
+                if "check_time" in data and data["check_time"]:
                     data["check_time"] = datetime.fromisoformat(data["check_time"])
                 return data
             return None
         except Exception as e:
             logger.error(f"Ошибка при получении состояния сайта {url}: {str(e)}")
             return None
+    
+    def delete_website_state(self, url: str) -> bool:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('DELETE FROM website_states WHERE url = ?', (url,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Ошибка при удалении сайта {url}: {str(e)}")
+            self.connection.rollback()
+            return False
     
     def save_website_change(self, change: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
@@ -265,34 +288,45 @@ class Database:
                 cert_copy.get("common_name", "N/A"),
                 cert_copy.get("issuer", "N/A"),
                 cert_copy.get("organization", "N/A"),
-                cert_copy.get("not_before"),
-                cert_copy.get("not_after"),
-                cert_copy.get("days_to_expiry"),
+                cert_copy.get("not_before", ""),
+                cert_copy.get("not_after", ""),
+                cert_copy.get("days_to_expiry", 0),
                 1 if cert_copy.get("is_expiring", False) else 0,
                 1 if cert_copy.get("is_expired", False) else 0,
-                cert_copy["check_time"],
+                cert_copy.get("check_time", datetime.now().isoformat()),
                 json.dumps(cert_copy)
             ))
             self.connection.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении информации о сертификате {cert_info['domain']}: {str(e)}")
+            logger.error(f"Ошибка при сохранении информации о сертификате {cert_info.get('domain', 'unknown')}: {str(e)}")
             self.connection.rollback()
     
     def get_cert_info(self, domain: str) -> Optional[Dict[str, Any]]:
         cursor = self.connection.cursor()
         try:
-            cursor.execute('SELECT data FROM cert_info WHERE domain = ?', (domain,))
+            cursor.execute('SELECT * FROM cert_info WHERE domain = ?', (domain,))
             row = cursor.fetchone()
             if row:
-                cert_info = json.loads(row[0])
+                data = dict(row)
                 for key in ["not_before", "not_after", "check_time"]:
-                    if key in cert_info and cert_info[key]:
-                        cert_info[key] = datetime.fromisoformat(cert_info[key])
-                return cert_info
+                    if key in data and data[key]:
+                        data[key] = datetime.fromisoformat(data[key])
+                return data
             return None
         except Exception as e:
             logger.error(f"Ошибка при получении информации о сертификате {domain}: {str(e)}")
             return None
+    
+    def delete_cert_info(self, domain: str) -> bool:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('DELETE FROM cert_info WHERE domain = ?', (domain,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Ошибка при удалении сертификата {domain}: {str(e)}")
+            self.connection.rollback()
+            return False
     
     def get_all_records(self, table_name: str, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         cursor = self.connection.cursor()
@@ -315,15 +349,14 @@ class Database:
             rows = cursor.fetchall()
             result = []
             for row in rows:
-                row_dict = dict(row)
-                if 'data' in row_dict and row_dict['data']:
-                    data = json.loads(row_dict['data'])
-                    for key in ['scan_time', 'check_time', 'change_time', 'not_before', 'not_after']:
-                        if key in data and data[key]:
+                data = dict(row)
+                for key in ['scan_time', 'check_time', 'change_time', 'not_before', 'not_after']:
+                    if key in data and data[key]:
+                        try:
                             data[key] = datetime.fromisoformat(data[key])
-                    result.append(data)
-                else:
-                    result.append(row_dict)
+                        except (ValueError, TypeError):
+                            pass
+                result.append(data)
             return result
         except Exception as e:
             logger.error(f"Ошибка при получении записей из таблицы {table_name}: {str(e)}")
@@ -332,22 +365,22 @@ class Database:
     def save_port_scan(self, scan_result: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
-            for port_data in scan_result["ports"]:
+            for port_data in scan_result.get("ports", []):
                 cursor.execute('''
                 INSERT OR REPLACE INTO port_states 
                 (ip_address, port, protocol, service, is_open, scan_time) 
                 VALUES (?, ?, ?, ?, ?, ?)
                 ''', (
                     scan_result["ip"],
-                    port_data["port"],
-                    "tcp",
-                    port_data["service"],
-                    1,
+                    port_data.get("port"),
+                    port_data.get("protocol", "tcp"),
+                    port_data.get("service", "unknown"),
+                    1 if port_data.get("state") == "open" else 0,
                     datetime.fromtimestamp(scan_result["timestamp"]).isoformat()
                 ))
             self.connection.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении результатов сканирования портов для {scan_result['ip']}: {str(e)}")
+            logger.error(f"Ошибка при сохранении результатов сканирования портов для {scan_result.get('ip', 'unknown')}: {str(e)}")
             self.connection.rollback()
     
     def get_last_port_scan(self, ip: str) -> Optional[Dict[str, Any]]:
@@ -368,10 +401,21 @@ class Database:
             logger.error(f"Ошибка при получении последнего сканирования портов для {ip}: {str(e)}")
             return None
     
+    def delete_port_state(self, ip_address: str) -> bool:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('DELETE FROM port_states WHERE ip_address = ?', (ip_address,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Ошибка при удалении портов для {ip_address}: {str(e)}")
+            self.connection.rollback()
+            return False
+    
     def save_dns_scan(self, dns_data: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
-            for record_type, records in dns_data["records"].items():
+            for record_type, records in dns_data.get("records", {}).items():
                 for value in records:
                     value_str = str(value) if not isinstance(value, dict) else json.dumps(value)
                     cursor.execute('''
@@ -387,7 +431,7 @@ class Database:
                     ))
             self.connection.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении DNS-данных для {dns_data['domain']}: {str(e)}")
+            logger.error(f"Ошибка при сохранении DNS-данных для {dns_data.get('domain', 'unknown')}: {str(e)}")
             self.connection.rollback()
     
     def get_last_dns_scan(self, domain: str) -> Optional[Dict[str, Any]]:
@@ -419,10 +463,21 @@ class Database:
             logger.error(f"Ошибка при получении последнего DNS-сканирования для {domain}: {str(e)}")
             return None
     
+    def delete_dns_records(self, domain: str) -> bool:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('DELETE FROM dns_records WHERE domain = ?', (domain,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Ошибка при удалении DNS-записей для {domain}: {str(e)}")
+            self.connection.rollback()
+            return False
+    
     def save_security_headers_check(self, check_data: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
-            for header_name, header_value in check_data["headers"].items():
+            for header_name, header_value in check_data.get("headers", {}).items():
                 cursor.execute('''
                 INSERT OR REPLACE INTO security_headers 
                 (url, header_name, header_value, check_time) 
@@ -435,7 +490,7 @@ class Database:
                 ))
             self.connection.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении заголовков для {check_data['url']}: {str(e)}")
+            logger.error(f"Ошибка при сохранении заголовков для {check_data.get('url', 'unknown')}: {str(e)}")
             self.connection.rollback()
     
     def get_last_security_headers_check(self, url: str) -> Optional[Dict[str, Any]]:
@@ -460,6 +515,17 @@ class Database:
         except Exception as e:
             logger.error(f"Ошибка при получении последних заголовков для {url}: {str(e)}")
             return None
+    
+    def delete_security_headers(self, url: str) -> bool:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('DELETE FROM security_headers WHERE url = ?', (url,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Ошибка при удалении заголовков для {url}: {str(e)}")
+            self.connection.rollback()
+            return False
     
     def close(self) -> None:
         if self.connection:

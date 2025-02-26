@@ -32,8 +32,8 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
                             <tr>
                                 <th>IP-адрес</th>
                                 <th>Порт</th>
@@ -60,16 +60,14 @@
                                 </td>
                                 <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="#" class="btn btn-outline-primary">Детали</a>
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="#">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('port_check', ip_address=result.ip_address) }}">Проверить</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deletePortModal" data-port-id="{{ result.id }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deletePortModal" data-ip-address="{{ result.ip_address }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -87,7 +85,6 @@
     </div>
 </div>
 
-<!-- Modal для добавления нового сканирования портов -->
 <div class="modal fade" id="addPortScanModal" tabindex="-1" aria-labelledby="addPortScanModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -109,17 +106,16 @@
                         <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
                         <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
                     </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" form="addPortScanForm" class="btn btn-primary">Добавить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal для удаления порта -->
 <div class="modal fade" id="deletePortModal" tabindex="-1" aria-labelledby="deletePortModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -128,13 +124,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Вы уверены, что хотите удалить запись о порте с ID <span id="portIdToDelete"></span>?</p>
+                <p>Вы уверены, что хотите удалить сканирование портов для IP <span id="portIpToDelete"></span>?</p>
                 <p class="text-danger">Это действие нельзя отменить.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deletePortForm" action="{{ url_for('port_scanning') }}" method="post">
-                    <input type="hidden" name="port_id" id="deletePortId">
+                    <input type="hidden" name="ip_address" id="deletePortIp">
+                    <input type="hidden" name="delete" value="true">
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
@@ -149,9 +146,9 @@
         if (deletePortModal) {
             deletePortModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                const portId = button.getAttribute('data-port-id');
-                document.getElementById('portIdToDelete').textContent = portId;
-                document.getElementById('deletePortId').value = portId;
+                const ipAddress = button.getAttribute('data-ip-address');
+                document.getElementById('portIpToDelete').textContent = ipAddress;
+                document.getElementById('deletePortIp').value = ipAddress;
             });
         }
     });

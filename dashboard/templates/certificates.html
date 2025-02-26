@@ -25,14 +25,6 @@
                                 <option value="expired">Истекшие</option>
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Сортировка:</label>
-                            <select name="sort" class="form-select form-select-sm">
-                                <option value="domain">По домену</option>
-                                <option value="expiry">По дате истечения</option>
-                                <option value="issuer">По издателю</option>
-                            </select>
-                        </div>
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
@@ -41,8 +33,8 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
                             <tr>
                                 <th>Домен</th>
                                 <th>Издатель</th>
@@ -63,7 +55,7 @@
                                 <td>
                                     {% if cert.days_to_expiry and cert.days_to_expiry < 0 %}
                                         <span class="text-danger">Истек {{ cert.days_to_expiry|abs }} дней назад</span>
-                                    {% elif cert.days_to_expiry %}
+                                    {% elif cert.days_to_expiry is not none %}
                                         {{ cert.days_to_expiry }}
                                     {% else %}
                                         N/A
@@ -81,16 +73,16 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('certificate_details', domain=cert.domain) }}" class="btn btn-outline-primary">Детали</a>
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="#">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('certificate_details', domain=cert.domain) }}">Детали</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('certificate_check', domain=cert.domain) }}">Проверить</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('certificate_edit', domain=cert.domain) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteCertModal" data-cert-id="{{ cert.domain }}" data-cert-domain="{{ cert.domain }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteCertModal" data-domain="{{ cert.domain }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -108,7 +100,6 @@
     </div>
 </div>
 
-<!-- Modal для добавления нового сертификата -->
 <div class="modal fade" id="addCertModal" tabindex="-1" aria-labelledby="addCertModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -117,7 +108,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form action="{{ url_for('certificates') }}" method="post">
+                <form id="addCertForm" action="{{ url_for('certificates') }}" method="post">
                     <div class="mb-3">
                         <label for="domain" class="form-label">Домен</label>
                         <input type="text" class="form-control" id="domain" name="domain" placeholder="example.com" required>
@@ -140,7 +131,6 @@
     </div>
 </div>
 
-<!-- Modal для удаления сертификата -->
 <div class="modal fade" id="deleteCertModal" tabindex="-1" aria-labelledby="deleteCertModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -155,8 +145,8 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deleteCertForm" action="{{ url_for('certificates') }}" method="post">
-                    <input type="hidden" name="delete" value="true">
                     <input type="hidden" name="domain" id="deleteCertDomain">
+                    <input type="hidden" name="delete" value="true">
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
@@ -171,10 +161,9 @@
         if (deleteCertModal) {
             deleteCertModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                const certId = button.getAttribute('data-cert-id');
-                const certDomain = button.getAttribute('data-cert-domain');
-                document.getElementById('certDomainToDelete').textContent = certDomain;
-                document.getElementById('deleteCertForm').querySelector('#deleteCertDomain').value = certId;
+                const domain = button.getAttribute('data-domain');
+                document.getElementById('certDomainToDelete').textContent = domain;
+                document.getElementById('deleteCertDomain').value = domain;
             });
         }
     });

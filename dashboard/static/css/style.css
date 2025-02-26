@@ -13,3 +13,33 @@ body {
 .card {
     margin-bottom: 1rem;
 }
+
+/* Предотвращаем горизонтальный скролл в card-body */
+.card-body {
+    overflow-x: hidden;
+}
+
+/* Улучшаем выпадающее меню */
+.dropdown-menu {
+    min-width: 150px; /* Фиксированная минимальная ширина */
+    max-width: 200px; /* Ограничение максимальной ширины */
+    white-space: nowrap; /* Предотвращаем перенос текста */
+    overflow: hidden; /* Скрываем переполнение */
+    text-overflow: ellipsis; /* Добавляем многоточие для длинных пунктов */
+}
+
+/* Позиционирование меню справа, чтобы не вылезало за таблицу */
+.table-responsive {
+    position: relative;
+}
+
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    position: absolute;
+    right: 0; /* Открывается вправо от кнопки */
+    left: auto;
+    z-index: 1000; /* Убедимся, что меню поверх всего */
+}

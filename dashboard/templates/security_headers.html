@@ -32,13 +32,12 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
                             <tr>
                                 <th>URL</th>
                                 <th>Заголовок</th>
                                 <th>Значение</th>
-                                <th>Статус</th>
                                 <th>Последняя проверка</th>
                                 <th>Действия</th>
                             </tr>
@@ -49,19 +48,16 @@
                                 <td>{{ result.url }}</td>
                                 <td>{{ result.header_name or 'N/A' }}</td>
                                 <td>{{ result.header_value or 'N/A' }}</td>
-                                <td><span class="badge bg-success">Безопасно</span></td>
                                 <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="#" class="btn btn-outline-primary">Детали</a>
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="#">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('headers_check', url=result.url) }}">Проверить</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteHeadersModal" data-headers-url="{{ result.url }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteHeadersModal" data-url="{{ result.url }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -79,7 +75,6 @@
     </div>
 </div>
 
-<!-- Modal для добавления проверки заголовков -->
 <div class="modal fade" id="addHeadersModal" tabindex="-1" aria-labelledby="addHeadersModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -97,17 +92,16 @@
                         <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
                         <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
                     </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" form="addHeadersForm" class="btn btn-primary">Добавить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal для удаления проверки заголовков -->
 <div class="modal fade" id="deleteHeadersModal" tabindex="-1" aria-labelledby="deleteHeadersModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -123,6 +117,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deleteHeadersForm" action="{{ url_for('security_headers') }}" method="post">
                     <input type="hidden" name="url" id="deleteHeadersUrl">
+                    <input type="hidden" name="delete" value="true">
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
@@ -137,9 +132,9 @@
         if (deleteHeadersModal) {
             deleteHeadersModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                const headersUrl = button.getAttribute('data-headers-url');
-                document.getElementById('headersUrlToDelete').textContent = headersUrl;
-                document.getElementById('deleteHeadersUrl').value = headersUrl;
+                const url = button.getAttribute('data-url');
+                document.getElementById('headersUrlToDelete').textContent = url;
+                document.getElementById('deleteHeadersUrl').value = url;
             });
         }
     });

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Веб-сайты{% endblock %}
+{% block title %}Мониторинг веб-сайтов{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -22,7 +22,6 @@
                                 <option value="">Все</option>
                                 <option value="up">Доступные</option>
                                 <option value="down">Недоступные</option>
-                                <option value="changed">Изменившиеся</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
@@ -33,13 +32,13 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
                             <tr>
                                 <th>URL</th>
                                 <th>Статус</th>
                                 <th>Код ответа</th>
-                                <th>Время отклика</th>
+                                <th>Время отклика (мс)</th>
                                 <th>Последняя проверка</th>
                                 <th>Действия</th>
                             </tr>
@@ -56,19 +55,19 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ result.status_code or 'N/A' }}</td>
-                                <td>{{ result.response_time or 'N/A' }} мс</td>
-                                <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</td>
+                                <td>{{ result.response_time or 'N/A' }}</td>
+                                <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="#" class="btn btn-outline-primary">Детали</a>
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="#">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('website_details', url=result.url) }}">Детали</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('website_check', url=result.url) }}">Проверить</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('website_edit', url=result.url) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteWebsiteModal" data-website-url="{{ result.url }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteWebsiteModal" data-url="{{ result.url }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -86,7 +85,6 @@
     </div>
 </div>
 
-<!-- Modal для добавления нового веб-сайта -->
 <div class="modal fade" id="addWebsiteModal" tabindex="-1" aria-labelledby="addWebsiteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -104,17 +102,16 @@
                         <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
                         <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
                     </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" form="addWebsiteForm" class="btn btn-primary">Добавить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal для удаления веб-сайта -->
 <div class="modal fade" id="deleteWebsiteModal" tabindex="-1" aria-labelledby="deleteWebsiteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -130,6 +127,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deleteWebsiteForm" action="{{ url_for('websites') }}" method="post">
                     <input type="hidden" name="url" id="deleteWebsiteUrl">
+                    <input type="hidden" name="delete" value="true">
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
@@ -144,9 +142,9 @@
         if (deleteWebsiteModal) {
             deleteWebsiteModal.addEventListener('show.bs.modal', function(event) {
                 const button = event.relatedTarget;
-                const websiteUrl = button.getAttribute('data-website-url');
-                document.getElementById('websiteUrlToDelete').textContent = websiteUrl;
-                document.getElementById('deleteWebsiteUrl').value = websiteUrl;
+                const url = button.getAttribute('data-url');
+                document.getElementById('websiteUrlToDelete').textContent = url;
+                document.getElementById('deleteWebsiteUrl').value = url;
             });
         }
     });

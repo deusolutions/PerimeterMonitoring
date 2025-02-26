@@ -25,7 +25,7 @@
                 <dt class="col-sm-3">Описание</dt>
                 <dd class="col-sm-9">{{ ip_state.description or 'N/A' }}</dd>
                 <dt class="col-sm-3">Последняя проверка</dt>
-                <dd class="col-sm-9">{{ ip_state.scan_time.strftime('%H:%M:%S %d.%m.%Y') }}</dd>
+                <dd class="col-sm-9">{{ ip_state.scan_time.strftime('%H:%M:%S %d.%m.%Y') if ip_state.scan_time else 'N/A' }}</dd>
             </dl>
             <a href="{{ url_for('ip_scan') }}" class="btn btn-primary">Назад</a>
         </div>

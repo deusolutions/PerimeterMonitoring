@@ -32,8 +32,8 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
                             <tr>
                                 <th>IP-адрес</th>
                                 <th>Статус</th>
@@ -55,17 +55,17 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ result.hostname or 'N/A' }}</td>
-                                <td>{{ result.get('description', 'N/A') }}</td>
-                                <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') }}</td>
+                                <td>{{ result.description or 'N/A' }}</td>
+                                <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="#" class="btn btn-outline-primary">Детали</a>
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="visually-hidden">Toggle Dropdown</span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="#">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('ip_details', ip_address=result.ip_address) }}">Детали</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('ip_check', ip_address=result.ip_address) }}">Проверить</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('ip_edit', ip_address=result.ip_address) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
                                             <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteIpModal" data-ip-address="{{ result.ip_address }}">Удалить</a></li>
                                         </ul>
@@ -85,7 +85,6 @@
     </div>
 </div>
 
-<!-- Modal для добавления нового IP-адреса -->
 <div class="modal fade" id="addIpModal" tabindex="-1" aria-labelledby="addIpModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -107,17 +106,16 @@
                         <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
                         <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
                     </div>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="submit" form="addIpForm" class="btn btn-primary">Добавить</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal для удаления IP-адреса -->
 <div class="modal fade" id="deleteIpModal" tabindex="-1" aria-labelledby="deleteIpModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

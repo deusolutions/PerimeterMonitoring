@@ -21,11 +21,13 @@
                     {% endif %}
                 </dd>
                 <dt class="col-sm-3">Код ответа</dt>
-                <dd class="col-sm-9">{{ website_state.status_code }}</dd>
+                <dd class="col-sm-9">{{ website_state.status_code or 'N/A' }}</dd>
                 <dt class="col-sm-3">Время отклика</dt>
-                <dd class="col-sm-9">{{ website_state.response_time }} мс</dd>
+                <dd class="col-sm-9">{{ website_state.response_time or 'N/A' }} мс</dd>
+                <dt class="col-sm-3">Ошибка</dt>
+                <dd class="col-sm-9">{{ website_state.error or 'N/A' }}</dd>
                 <dt class="col-sm-3">Последняя проверка</dt>
-                <dd class="col-sm-9">{{ website_state.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</dd>
+                <dd class="col-sm-9">{{ website_state.check_time.strftime('%H:%M:%S %d.%m.%Y') if website_state.check_time else 'N/A' }}</dd>
             </dl>
             <a href="{{ url_for('websites') }}" class="btn btn-primary">Назад</a>
         </div>

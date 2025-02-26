@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">{{ title }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="mb-3">
+                    <label for="domain" class="form-label">Домен</label>
+                    <input type="text" class="form-control" id="domain" name="domain" value="{{ cert_state.domain }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <a href="{{ url_for('certificates') }}" class="btn btn-secondary">Отмена</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -5,131 +5,42 @@
 {% block content %}
 <div class="container mt-4">
     <div class="card">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Журнал уведомлений и инцидентов</h4>
-            <div>
-                <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    Фильтры
-                </button>
-                <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 300px;">
-                    <form action="{{ url_for('alerts_page') }}" method="get">
-                        <div class="mb-3">
-                            <label class="form-label">Тип:</label>
-                            <select name="type" class="form-select form-select-sm">
-                                <option value="">Все типы</option>
-                                <option value="ip_change">Изменения IP</option>
-                                <option value="website_down">Сайт недоступен</option>
-                                <option value="cert_expiring">Истекающий сертификат</option>
-                                <option value="security_header">Проблема с заголовками</option>
-                                <option value="port_open">Открытый порт</option>
-                                <option value="dns_change">Изменение DNS</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Серьезность:</label>
-                            <select name="severity" class="form-select form-select-sm">
-                                <option value="">Все</option>
-                                <option value="info">Информация</option>
-                                <option value="warning">Предупреждение</option>
-                                <option value="critical">Критическое</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Статус:</label>
-                            <select name="status" class="form-select form-select-sm">
-                                <option value="">Все</option>
-                                <option value="new">Новые</option>
-                                <option value="in_progress">В обработке</option>
-                                <option value="resolved">Решенные</option>
-                                <option value="ignored">Игнорируемые</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Период:</label>
-                            <select name="period" class="form-select form-select-sm">
-                                <option value="24h">24 часа</option>
-                                <option value="7d">7 дней</option>
-                                <option value="30d">30 дней</option>
-                                <option value="all">Все время</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
-                    </form>
-                </div>
-            </div>
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Уведомления и инциденты</h4>
         </div>
         <div class="card-body">
             {% if alerts %}
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
                             <tr>
                                 <th>ID</th>
                                 <th>Время</th>
                                 <th>Тип</th>
                                 <th>Объект</th>
                                 <th>Сообщение</th>
-                                <th>Серьезность</th>
+                                <th>Серьёзность</th>
                                 <th>Статус</th>
-                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for alert in alerts %}
-                            <tr class="{% if alert.severity == 'critical' %}table-danger{% elif alert.severity == 'warning' %}table-warning{% elif alert.severity == 'info' %}table-info{% endif %}">
+                            <tr class="{% if alert.severity == 'high' %}table-danger{% elif alert.severity == 'medium' %}table-warning{% else %}table-info{% endif %}">
                                 <td>{{ alert.id }}</td>
                                 <td>{{ alert.timestamp }}</td>
                                 <td>{{ alert.type }}</td>
                                 <td>{{ alert.target }}</td>
                                 <td>{{ alert.message }}</td>
-                                <td>
-                                    <span class="badge {% if alert.severity == 'critical' %}bg-danger{% elif alert.severity == 'warning' %}bg-warning{% else %}bg-info{% endif %}">
-                                        {{ alert.severity }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <span class="badge {% if alert.status == 'new' %}bg-primary{% elif alert.status == 'in_progress' %}bg-info{% elif alert.status == 'resolved' %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {{ alert.status }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ url_for('alert_details', alert_id=alert.id) }}" class="btn btn-outline-primary">Детали</a>
-                                        <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="visually-hidden">Toggle Dropdown</span>
-                                        </button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="{{ url_for('update_alert_status', alert_id=alert.id, status='in_progress') }}">В обработку</a></li>
-                                            <li><a class="dropdown-item" href="{{ url_for('update_alert_status', alert_id=alert.id, status='resolved') }}">Решено</a></li>
-                                            <li><a class="dropdown-item" href="{{ url_for('update_alert_status', alert_id=alert.id, status='ignored') }}">Игнорировать</a></li>
-                                        </ul>
-                                    </div>
-                                </td>
+                                <td>{{ alert.severity }}</td>
+                                <td>{{ alert.status }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                
-                <!-- Пагинация -->
-                <nav aria-label="Page navigation">
-                    <ul class="pagination justify-content-center">
-                        <li class="page-item {% if not prev_page %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('alerts_page', page=prev_page) if prev_page else '#' }}" tabindex="-1" aria-disabled="{{ 'true' if not prev_page else 'false' }}">Предыдущая</a>
-                        </li>
-                        {% for p in range(1, total_pages + 1) %}
-                            <li class="page-item {% if p == current_page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('alerts_page', page=p) }}">{{ p }}</a>
-                            </li>
-                        {% endfor %}
-                        <li class="page-item {% if not next_page %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('alerts_page', page=next_page) if next_page else '#' }}">Следующая</a>
-                        </li>
-                    </ul>
-                </nav>
             {% else %}
                 <div class="alert alert-info text-center">
-                    Уведомлений не найдено
+                    Нет активных уведомлений
                 </div>
             {% endif %}
         </div>
