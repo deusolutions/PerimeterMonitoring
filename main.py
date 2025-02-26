@@ -58,7 +58,7 @@ class PerimeterMonitor:
             self.port_scanner = PortScanner(self.db, config)
         
         if config.DNS_MONITOR_ENABLED:
-            self.dns_monitor = DNSMonitor(self.db, self.notifier)
+            self.dns_monitor = DNSMonitor(self.db, config)
         
         if config.SECURITY_HEADERS_CHECK_ENABLED:
             self.headers_checker = SecurityHeadersChecker(self.db, self.notifier)
