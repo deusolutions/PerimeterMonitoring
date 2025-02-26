@@ -27,10 +27,10 @@ class SecurityHeadersChecker:
         """
         self.database = database
         self.config = config
-        self.timeout = config.getfloat('security_headers', 'timeout', fallback=10.0)
-        self.user_agent = config.get('security_headers', 'user_agent', 
-                                    fallback='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36')
-        self.verify_ssl = config.getboolean('security_headers', 'verify_ssl', fallback=False)
+        self.timeout = getattr(config, 'SECURITY_HEADERS_TIMEOUT', 10.0)
+        self.user_agent = getattr(config, 'SECURITY_HEADERS_USER_AGENT', 
+                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36')
+        self.verify_ssl = getattr(config, 'SECURITY_HEADERS_VERIFY_SSL', False)
         
         # Загружаем список критических заголовков
         self.critical_headers = self._load_critical_headers()

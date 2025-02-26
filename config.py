@@ -52,3 +52,6 @@ DNS_RECORD_TYPES = os.getenv("DNS_RECORD_TYPES", "A,AAAA,MX,NS,TXT").split(",")
 
 SECURITY_HEADERS_CHECK_ENABLED = os.getenv("SECURITY_HEADERS_CHECK_ENABLED", "True") == "True"
 SECURITY_HEADERS = os.getenv("SECURITY_HEADERS", "X-Content-Type-Options,X-Frame-Options,Content-Security-Policy,Strict-Transport-Security").split(",")
+SECURITY_HEADERS_TIMEOUT = float(os.getenv("SECURITY_HEADERS_TIMEOUT", "10.0"))
+SECURITY_HEADERS_USER_AGENT = os.getenv("SECURITY_HEADERS_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36")
+SECURITY_HEADERS_VERIFY_SSL = os.getenv("SECURITY_HEADERS_VERIFY_SSL", "False") == "True"
