@@ -11,6 +11,7 @@ load_dotenv()
 DEBUG = os.getenv("DEBUG", "False") == "True"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 SCAN_INTERVAL = int(os.getenv("SCAN_INTERVAL", "3600"))  # интервал сканирования в секундах
+FLASK_SECRET_KEY = os.getenv("FLASK_SECRET_KEY", os.urandom(24).hex())  # секретный ключ для Flask сессий
 
 # Настройки IP сканера
 IP_RANGES = os.getenv("IP_RANGES", "").split(",")  # список диапазонов IP через запятую
