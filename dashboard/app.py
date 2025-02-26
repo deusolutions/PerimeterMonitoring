@@ -191,13 +191,15 @@ def api_get_data(table_name):
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('error.html', title='Страница не найдена',
-                          message='Запрошенная страница не существует'), 404
+                          message='Запрошенная страница не существует',
+                          current_time=datetime.now()), 404
 
 # Обработчик ошибок для 500
 @app.errorhandler(500)
 def internal_error(e):
     return render_template('error.html', title='Внутренняя ошибка сервера',
-                          message='Произошла внутренняя ошибка сервера. Пожалуйста, попробуйте позже.'), 500
+                          message='Произошла внутренняя ошибка сервера. Пожалуйста, попробуйте позже.',
+                          current_time=datetime.now()), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
