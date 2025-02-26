@@ -23,7 +23,7 @@ class DNSMonitor:
         """
         self.database = database
         self.config = config
-        self.timeout = config.getfloat('dns_monitor', 'timeout', fallback=3.0)
+        self.timeout = getattr(config, 'DNS_TIMEOUT', 3.0)
         self.record_types = self._load_record_types()
         self.nameservers = self._load_nameservers()
         
@@ -37,8 +37,7 @@ class DNSMonitor:
     def _load_record_types(self) -> List[str]:
         """Загружает список типов DNS-записей из конфигурации"""
         try:
-            types_str = self.config.get('dns_monitor', 'record_types', fallback='A,AAAA,MX,NS,TXT,CNAME,SOA')
-            return [rtype.strip() for rtype in types_str.split(',')]
+            return self.config.DNS_RECORD_TYPES
         except Exception as e:
             logger.error(f"Ошибка при загрузке типов DNS-записей: {e}")
             # Возвращаем стандартные типы записей
@@ -47,10 +46,7 @@ class DNSMonitor:
     def _load_nameservers(self) -> List[str]:
         """Загружает список DNS-серверов из конфигурации"""
         try:
-            ns_str = self.config.get('dns_monitor', 'nameservers', fallback='')
-            if ns_str:
-                return [ns.strip() for ns in ns_str.split(',')]
-            return []
+            return getattr(self.config, 'DNS_NAMESERVERS', [])
         except Exception as e:
             logger.error(f"Ошибка при загрузке DNS-серверов: {e}")
             return []
