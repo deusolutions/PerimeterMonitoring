@@ -20,7 +20,7 @@ import config
 
 # Настройка логирования
 logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler("monitoring.log"),
