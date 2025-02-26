@@ -7,7 +7,7 @@ from datetime import datetime
 # Добавляем родительский каталог в sys.path для импорта модулей проекта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.database import Database as DatabaseManager
+from core.database import Database
 from core.scheduler import Scheduler
 import config
 
