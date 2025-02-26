@@ -1,47 +1,49 @@
 # Core requirements
-Flask==2.3.3
-Flask-WTF==1.1.1
-SQLAlchemy==2.0.23
-apscheduler==3.10.4
-requests==2.31.0
-python-dotenv==1.0.0
-pyyaml==6.0.1
-cryptography==41.0.5
-dnspython==2.4.2
+Flask==2.3.3                   # Веб-фреймворк для дашборда
+Flask-WTF==1.1.1              # Поддержка форм в Flask
+SQLAlchemy==2.0.23            # ORM для работы с базой данных
+apscheduler==3.10.4           # Планировщик задач (используется в core/scheduler.py)
+requests==2.31.0              # HTTP-запросы (используется в website_monitor.py, security_headers.py)
+python-dotenv==1.0.0          # Загрузка переменных окружения из .env (config.py)
+pyyaml==6.0.1                 # Поддержка YAML (хотя не используется явно, оставлено из исходного списка)
+cryptography==41.0.5          # Шифрование (возможно, для будущих функций)
+dnspython==2.4.2              # Работа с DNS (dns_monitor.py)
 
 # Monitoring tools
-pyOpenSSL==23.3.0
-beautifulsoup4==4.12.2
-python-nmap==0.7.1
-ping3==4.0.4
-tldextract==3.4.4
-publicsuffixlist==0.9.2
-schedule
+pyOpenSSL==23.3.0             # Работа с SSL-сертификатами (возможно, для cert_checker.py)
+beautifulsoup4==4.12.2        # Парсинг HTML (может использоваться в будущем)
+python-nmap==0.7.1            # Сканирование портов (хотя текущий PortScanner использует socket)
+ping3==4.0.4                  # ICMP-пинг (альтернатива subprocess в ip_scanner.py)
+tldextract==3.4.4             # Извлечение доменов (может использоваться для разбора URL)
+publicsuffixlist==0.9.2       # Список публичных суффиксов (зависимость tldextract)
+schedule==1.2.2               # Планирование задач (main.py)
 
 # Visualization and dashboard
-Flask-Bootstrap==3.3.7.1
-flask-login==0.6.3
-matplotlib==3.8.0
-plotly==5.18.0
+Flask-Bootstrap==3.3.7.1      # Bootstrap для Flask
+flask-login==0.6.3            # Аутентификация в Flask
+matplotlib==3.8.0             # Визуализация данных (может использоваться в дашборде)
+plotly==5.18.0                # Интерактивные графики (может использоваться в дашборде)
 
 # Database drivers
-pymysql==1.1.0
-psycopg2-binary==2.9.9  # PostgreSQL support
-redis==5.0.1  # For caching
+pymysql==1.1.0                # Драйвер MySQL
+psycopg2-binary==2.9.9        # Драйвер PostgreSQL
+redis==5.0.1                  # Кэширование
 
 # Notification systems
-slackclient==2.9.4
-twilio==8.10.0
-pyngrok==7.0.0
-python-telegram-bot==20.7
+slackclient==2.9.4            # Уведомления в Slack
+twilio==8.10.0                # SMS-уведомления
+pyngrok==7.0.0                # Туннелирование для локального сервера
+python-telegram-bot==20.7     # Уведомления в Telegram
 
 # Development tools
-pytest==7.4.3
-black==23.10.0
-flake8==6.1.0
-isort==5.12.0
-python-dotenv==1.0.0
+pytest==7.4.3                 # Тестирование
+black==23.10.0                # Форматирование кода
+flake8==6.1.0                 # Линтер
+isort==5.12.0                 # Сортировка импортов
 
 # Documentation
-Sphinx==7.2.6
-sphinxcontrib-httpdomain==1.8.1
+Sphinx==7.2.6                 # Генерация документации
+sphinxcontrib-httpdomain==1.8.1  # Поддержка HTTP в Sphinx
+
+# Additional dependencies from code
+urllib3==2.2.1                # HTTP-клиент (security_headers.py, требуется для InsecureRequestWarning)

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Задачи{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Управление задачами</h4>
+            <div>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                    <i class="fas fa-plus"></i> Добавить задачу
+                </button>
+                <button class="btn btn-{% if scheduler_running %}danger{% else %}success{% endif %} btn-sm" id="toggleScheduler">
+                    <i class="fas fa-{% if scheduler_running %}stop{% else %}play{% endif %}"></i> 
+                    {% if scheduler_running %}Остановить{% else %}Запустить{% endif %}
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <p>Состояние планировщика: 
+                <span class="badge {% if scheduler_running %}bg-success{% else %}bg-danger{% endif %}">
+                    {% if scheduler_running %}Запущен{% else %}Остановлен{% endif %}
+                </span>
+            </p>
+            {% if tasks %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Название</th>
+                                <th>Функция</th>
+                                <th>Интервал</th>
+                                <th>Последний запуск</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task_name, task_info in tasks.items() %}
+                            <tr>
+                                <td>{{ task_name }}</td>
+                                <td>{{ task_info.function }}</td>
+                                <td>{{ task_info.interval }} {{ task_info.interval_type }}</td>
+                                <td>{{ task_info.last_run.strftime('%H:%M:%S %d.%m.%Y') if task_info.last_run else 'N/A' }}</td>
+                                <td>
+                                    <span class="badge {% if task_info.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if task_info.is_active %}Активна{% else %}Приостановлена{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Действия
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="controlTask('{{ task_name }}', 'pause')">Приостановить</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="controlTask('{{ task_name }}', 'resume')">Возобновить</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="controlTask('{{ task_name }}', 'remove')">Удалить</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    Задачи не найдены
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal для добавления новой задачи -->
+<div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTaskModalLabel">Добавить задачу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTaskForm" action="{{ url_for('scheduler_tasks') }}" method="post">
+                    <div class="mb-3">
+                        <label for="task_name" class="form-label">Название задачи</label>
+                        <input type="text" class="form-control" id="task_name" name="task_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="function" class="form-label">Функция</label>
+                        <select class="form-select" id="function" name="function" required>
+                            <option value="run_ip_scan">Сканирование IP</option>
+                            <option value="check_websites">Проверка веб-сайтов</option>
+                            <option value="check_certificates">Проверка сертификатов</option>
+                            <option value="run_port_scan">Сканирование портов</option>
+                            <option value="check_dns_records">Проверка DNS</option>
+                            <option value="check_security_headers">Проверка заголовков</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="interval" class="form-label">Интервал (минуты)</label>
+                        <input type="number" class="form-control" id="interval" name="interval" value="60" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" form="addTaskForm" class="btn btn-primary">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    function controlTask(taskName, action) {
+        fetch('/api/tasks/control', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                task_name: taskName,
+                action: action
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Ошибка:', error));
+    }
+
+    document.getElementById('toggleScheduler').addEventListener('click', function() {
+        const action = this.textContent.trim().includes('Остановить') ? 'stop' : 'start';
+        fetch('/api/scheduler/control', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ action: action })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => console.error('Ошибка:', error));
+    });
+</script>
+{% endblock %}
+{% endblock %}
