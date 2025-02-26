@@ -1,0 +1,15 @@
+
+/* Basic styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+.card {
+    margin-bottom: 1rem;
+}
