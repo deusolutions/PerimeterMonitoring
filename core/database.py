@@ -9,35 +9,23 @@ from typing import Dict, Any, List, Optional, Union
 
 import config
 
-logger = logging.getLogger("Database")
+logger = logging.getLogger(__name__)
 
 class Database:
     """Класс для работы с базой данных"""
     
     def __init__(self):
-        self.db_type = config.DB_TYPE
-        self.db_name = config.DB_NAME
+        self.db_name = "monitoring.db"
         self.connection = None
         
-        # Если используется не SQLite
-        self.db_user = config.DB_USER
-        self.db_password = config.DB_PASSWORD
-        self.db_host = config.DB_HOST
-        self.db_port = config.DB_PORT
-    
     def initialize(self) -> None:
         """
         Инициализация соединения с базой данных и создание необходимых таблиц
         """
         try:
-            if self.db_type == 'sqlite':
-                self.connection = sqlite3.connect(self.db_name, check_same_thread=False)
-                # Настройка SQLite для использования dict в качестве формата строк
-                self.connection.row_factory = sqlite3.Row
-            else:
-                # Здесь можно добавить поддержку PostgreSQL или MySQL
-                logger.error(f"Тип базы данных {self.db_type} не поддерживается")
-                raise ValueError(f"Unsupported database type: {self.db_type}")
+            self.connection = sqlite3.connect(self.db_name, check_same_thread=False)
+            # Настройка SQLite для использования dict в качестве формата строк
+            self.connection.row_factory = sqlite3.Row
             
             # Создание необходимых таблиц
             self._create_tables()
