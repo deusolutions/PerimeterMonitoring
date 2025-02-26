@@ -44,6 +44,15 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_HOST = os.getenv("DB_HOST", "")
 DB_PORT = os.getenv("DB_PORT", "")
 
+DATABASE_CONFIG = {
+    'type': DB_TYPE,
+    'name': DB_NAME,
+    'user': DB_USER,
+    'password': DB_PASSWORD,
+    'host': DB_HOST,
+    'port': DB_PORT
+}
+
 # Дополнительные настройки
 PORT_SCAN_ENABLED = os.getenv("PORT_SCAN_ENABLED", "True") == "True"
 COMMON_PORTS = list(map(int, os.getenv("COMMON_PORTS", "21,22,23,25,53,80,443,3306,3389,5432,8080").split(",")))
