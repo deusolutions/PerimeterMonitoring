@@ -34,8 +34,15 @@ class PerimeterMonitor:
     def __init__(self):
         logger.info("Инициализация системы мониторинга периметра")
         
+        # Создание директории для логов если её нет
+        os.makedirs('logs', exist_ok=True)
+        
         # Инициализация базы данных
         self.db = Database()
+        
+        # Проверка наличия конфигурационного файла
+        if not os.path.exists('.env'):
+            logger.warning("Файл .env не найден, используются значения по умолчанию")
         
         # Инициализация системы уведомлений
         self.notifier = NotificationManager()
