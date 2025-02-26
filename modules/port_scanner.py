@@ -23,15 +23,14 @@ class PortScanner:
         """
         self.database = database
         self.config = config
-        self.timeout = config.get('port_scanner', 'timeout', fallback=0.5)
-        self.threads = config.getint('port_scanner', 'threads', fallback=50)
+        self.timeout = getattr(config, 'PORT_SCAN_TIMEOUT', 0.5)
+        self.threads = getattr(config, 'PORT_SCAN_THREADS', 50)
         self.common_ports = self._load_common_ports()
         
     def _load_common_ports(self) -> List[int]:
         """Загружает список стандартных портов из конфигурации"""
         try:
-            ports_str = self.config.get('port_scanner', 'common_ports', fallback='21,22,23,25,53,80,110,135,139,143,443,445,993,995,1723,3306,3389,5900,8080,8443')
-            return [int(port) for port in ports_str.split(',')]
+            return self.config.COMMON_PORTS
         except Exception as e:
             logger.error(f"Ошибка при загрузке списка портов: {e}")
             # Возвращаем список наиболее распространенных портов по умолчанию
