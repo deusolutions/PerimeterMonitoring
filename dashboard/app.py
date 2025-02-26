@@ -19,7 +19,8 @@ app = Flask(__name__)
 app.secret_key = config.FLASK_SECRET_KEY
 
 # Инициализация компонентов
-db_manager = DatabaseManager(config.DATABASE_CONFIG)
+db_manager = Database()
+db_manager.initialize()
 scheduler = None  # Будет инициализирован в before_first_request
 
 @app.before_request
