@@ -61,7 +61,7 @@ class PerimeterMonitor:
             self.dns_monitor = DNSMonitor(self.db, config)
         
         if config.SECURITY_HEADERS_CHECK_ENABLED:
-            self.headers_checker = SecurityHeadersChecker(self.db, self.notifier)
+            self.headers_checker = SecurityHeadersChecker(self.db, config)
         
         logger.info("Система мониторинга инициализирована")
     
