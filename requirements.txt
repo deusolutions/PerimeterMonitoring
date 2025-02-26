@@ -1,0 +1,47 @@
+# Core requirements
+Flask==2.3.3
+Flask-WTF==1.1.1
+SQLAlchemy==2.0.23
+apscheduler==3.10.4
+requests==2.31.0
+python-dotenv==1.0.0
+pyyaml==6.0.1
+cryptography==41.0.5
+dnspython==2.4.2
+
+# Monitoring tools
+pyOpenSSL==23.3.0
+beautifulsoup4==4.12.2
+python-nmap==0.7.1
+ping3==4.0.4
+tldextract==3.4.4
+publicsuffixlist==0.9.2
+schedule
+
+# Visualization and dashboard
+Flask-Bootstrap==3.3.7.1
+flask-login==0.6.3
+matplotlib==3.8.0
+plotly==5.18.0
+
+# Database drivers
+pymysql==1.1.0
+psycopg2-binary==2.9.9  # PostgreSQL support
+redis==5.0.1  # For caching
+
+# Notification systems
+slackclient==2.9.4
+twilio==8.10.0
+pyngrok==7.0.0
+python-telegram-bot==20.7
+
+# Development tools
+pytest==7.4.3
+black==23.10.0
+flake8==6.1.0
+isort==5.12.0
+python-dotenv==1.0.0
+
+# Documentation
+Sphinx==7.2.6
+sphinxcontrib-httpdomain==1.8.1

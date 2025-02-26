@@ -1,0 +1,39 @@
+"""
+Архитектура системы мониторинга внешнего периметра компании
+
+Основные модули:
+1. ip_scanner.py - сканирование IP-адресов и обнаружение изменений
+2. website_monitor.py - проверка доступности веб-сайтов
+3. cert_checker.py - мониторинг SSL-сертификатов
+4. notification.py - система уведомлений
+5. database.py - хранение и управление данными
+6. main.py - основной модуль для запуска и координации
+
+Дополнительные модули:
+7. port_scanner.py - сканирование открытых портов
+8. dns_monitor.py - отслеживание изменений DNS
+9. security_headers.py - проверка заголовков безопасности
+10. dashboard.py - веб-интерфейс для мониторинга
+"""
+
+# Примерная структура проекта:
+# perimeter_monitoring/
+# ├── main.py
+# ├── config.py
+# ├── modules/
+# │   ├── ip_scanner.py
+# │   ├── website_monitor.py
+# │   ├── cert_checker.py
+# │   ├── port_scanner.py
+# │   ├── dns_monitor.py
+# │   ├── security_headers.py
+# ├── core/
+# │   ├── database.py
+# │   ├── notification.py
+# │   ├── scheduler.py
+# ├── dashboard/
+# │   ├── app.py
+# │   ├── templates/
+# │   └── static/
+# ├── tests/
+# └── requirements.txt
