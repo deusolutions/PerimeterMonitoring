@@ -2,6 +2,7 @@
 Основной модуль системы мониторинга периметра
 """
 import logging
+import os
 import time
 import schedule
 from datetime import datetime
