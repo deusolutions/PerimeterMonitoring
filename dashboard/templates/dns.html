@@ -50,10 +50,10 @@
                             {% for result in results %}
                             <tr>
                                 <td>{{ result.domain }}</td>
-                                <td>{{ result.record_type }}</td>
-                                <td>{{ result.value }}</td>
-                                <td>{{ result.ttl }}</td>
-                                <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</td>
+                                <td>{{ result.record_type or 'N/A' }}</td>
+                                <td>{{ result.value or 'N/A' }}</td>
+                                <td>{{ result.ttl or 'N/A' }}</td>
+                                <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <a href="#" class="btn btn-outline-primary">Детали</a>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">{{ title }}</h4>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">Домен</dt>
+                <dd class="col-sm-9">{{ cert_state.domain }}</dd>
+                <dt class="col-sm-3">Издатель</dt>
+                <dd class="col-sm-9">{{ cert_state.issuer }}</dd>
+                <dt class="col-sm-3">Действителен с</dt>
+                <dd class="col-sm-9">{{ cert_state.not_before.strftime('%H:%M:%S %d.%m.%Y') if cert_state.not_before else 'N/A' }}</dd>
+                <dt class="col-sm-3">Действителен до</dt>
+                <dd class="col-sm-9">{{ cert_state.not_after.strftime('%H:%M:%S %d.%m.%Y') if cert_state.not_after else 'N/A' }}</dd>
+                <dt class="col-sm-3">Осталось дней</dt>
+                <dd class="col-sm-9">{{ cert_state.days_to_expiry }}</dd>
+                <dt class="col-sm-3">Последняя проверка</dt>
+                <dd class="col-sm-9">{{ cert_state.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</dd>
+            </dl>
+            <a href="{{ url_for('certificates') }}" class="btn btn-primary">Назад</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

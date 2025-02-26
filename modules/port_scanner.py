@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import socket
 import threading
 import time
@@ -29,7 +27,7 @@ class PortScanner:
     def scan_port(self, ip: str, port: int) -> Dict[str, Any]:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
-        result = {"port": port, "state": "closed", "service": "unknown", "banner": None}
+        result = {"port": port, "state": "closed", "service": "unknown"}
         try:
             start_time = time.time()
             conn = sock.connect_ex((ip, port))
@@ -38,15 +36,14 @@ class PortScanner:
                 result["state"] = "open"
                 result["response_time"] = round(response_time * 1000, 2)
                 try:
-                    service = socket.getservbyport(port)
-                    result["service"] = service
-                except:
+                    result["service"] = socket.getservbyport(port)
+                except OSError:
                     pass
                 try:
                     sock.settimeout(1)
-                    banner = sock.recv(1024)
+                    banner = sock.recv(1024).decode('utf-8', errors='ignore').strip()
                     if banner:
-                        result["banner"] = banner.decode('utf-8', errors='ignore').strip()
+                        result["banner"] = banner
                 except:
                     pass
         except Exception as e:
@@ -62,8 +59,10 @@ class PortScanner:
         scan_results = {"ip": ip, "timestamp": time.time(), "ports": []}
         threads = []
         results = [None] * len(ports)
+        
         def scan_worker(ip, port, index):
             results[index] = self.scan_port(ip, port)
+        
         for i, port in enumerate(ports):
             thread = threading.Thread(target=scan_worker, args=(ip, port, i))
             thread.daemon = True
@@ -73,14 +72,17 @@ class PortScanner:
                 for t in threads:
                     t.join()
                 threads = []
+        
         for thread in threads:
             thread.join()
+        
         scan_results["ports"] = [r for r in results if r["state"] == "open"]
         return scan_results
     
     def check_changes(self, ip: str, current_scan: Dict[str, Any]) -> Tuple[bool, List[Dict[str, Any]]]:
         changes = []
         previous_scan = self.database.get_last_port_scan(ip)
+        
         if not previous_scan:
             for port_data in current_scan["ports"]:
                 changes.append({
@@ -90,8 +92,10 @@ class PortScanner:
                     "message": f"Обнаружен новый открытый порт: {port_data['port']} ({port_data['service']})"
                 })
             return bool(changes), changes
+        
         prev_ports = {p["port"]: p for p in previous_scan["ports"]}
         curr_ports = {p["port"]: p for p in current_scan["ports"]}
+        
         for port, data in curr_ports.items():
             if port not in prev_ports:
                 changes.append({
@@ -100,6 +104,7 @@ class PortScanner:
                     "service": data["service"],
                     "message": f"Обнаружен новый открытый порт: {port} ({data['service']})"
                 })
+        
         for port, data in prev_ports.items():
             if port not in curr_ports:
                 changes.append({
@@ -108,6 +113,7 @@ class PortScanner:
                     "service": data["service"],
                     "message": f"Закрыт ранее открытый порт: {port} ({data['service']})"
                 })
+                
         for port, curr_data in curr_ports.items():
             if port in prev_ports:
                 prev_data = prev_ports[port]
@@ -119,15 +125,16 @@ class PortScanner:
                         "new_service": curr_data["service"],
                         "message": f"Изменился сервис на порту {port}: {prev_data['service']} -> {curr_data['service']}"
                     })
-                if curr_data["banner"] != prev_data["banner"] and curr_data["banner"] and prev_data["banner"]:
+                if "banner" in curr_data and "banner" in prev_data and curr_data["banner"] != prev_data["banner"]:
                     changes.append({
                         "type": "banner_changed",
                         "port": port,
                         "message": f"Изменился баннер на порту {port}"
                     })
+        
         return bool(changes), changes
     
-    def scan(self, ip_list: List[str]) -> List[Dict[str, Any]]:  # Переименован из run_scan
+    def scan(self, ip_list: List[str]) -> List[Dict[str, Any]]:
         reports = []
         for ip in ip_list:
             logger.info(f"Сканирование портов для {ip}")
@@ -154,6 +161,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Использование: python port_scanner.py <ip>")
         sys.exit(1)
+    
     class MockConfig:
         def get(self, section, option, fallback=None):
             if option == 'common_ports':
@@ -161,11 +169,13 @@ if __name__ == "__main__":
             return fallback
         def getint(self, section, option, fallback=None):
             return fallback
+    
     class MockDatabase:
         def get_last_port_scan(self, ip):
             return None
         def save_port_scan(self, scan_result):
             print(f"Сохранено в БД: {json.dumps(scan_result, indent=2)}")
+    
     scanner = PortScanner(MockDatabase(), MockConfig())
     result = scanner.scan([sys.argv[1]])
     print(f"Результаты сканирования для {sys.argv[1]}:")

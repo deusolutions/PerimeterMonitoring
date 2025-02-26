@@ -1,19 +1,14 @@
-"""
-Модуль для работы с базой данных
-"""
 import logging
 import sqlite3
 import json
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
 
 import config
 
 logger = logging.getLogger(__name__)
 
 class Database:
-    """Класс для работы с базой данных"""
-    
     def __init__(self):
         self.db_name = config.DB_NAME
         self.connection = None
@@ -36,6 +31,7 @@ class Database:
             is_up INTEGER,
             hostname TEXT,
             scan_time TEXT,
+            description TEXT,
             data TEXT
         )
         ''')
@@ -131,20 +127,24 @@ class Database:
     def save_ip_state(self, state: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
+            state_copy = state.copy()
+            if "scan_time" in state_copy and isinstance(state_copy["scan_time"], datetime):
+                state_copy["scan_time"] = state_copy["scan_time"].isoformat()
             cursor.execute('''
             INSERT OR REPLACE INTO ip_states 
-            (ip_address, is_up, hostname, scan_time, data) 
-            VALUES (?, ?, ?, ?, ?)
+            (ip_address, is_up, hostname, scan_time, description, data) 
+            VALUES (?, ?, ?, ?, ?, ?)
             ''', (
-                state["ip_address"],
-                1 if state["is_up"] else 0,
-                state["hostname"],
-                state["scan_time"].isoformat(),
-                json.dumps(state)
+                state_copy["ip_address"],
+                1 if state_copy.get("is_up", False) else 0,
+                state_copy.get("hostname", ""),
+                state_copy.get("scan_time", datetime.now().isoformat()),
+                state_copy.get("description", ""),
+                json.dumps(state_copy)
             ))
             self.connection.commit()
         except Exception as e:
-            logger.error(f"Ошибка при сохранении состояния IP {state['ip_address']}: {str(e)}")
+            logger.error(f"Ошибка при сохранении состояния IP {state.get('ip_address', 'unknown')}: {str(e)}")
             self.connection.rollback()
     
     def get_ip_state(self, ip_address: str) -> Optional[Dict[str, Any]]:
@@ -153,11 +153,25 @@ class Database:
             cursor.execute('SELECT data FROM ip_states WHERE ip_address = ?', (ip_address,))
             row = cursor.fetchone()
             if row:
-                return json.loads(row[0])
+                data = json.loads(row[0])
+                if "scan_time" in data:
+                    data["scan_time"] = datetime.fromisoformat(data["scan_time"])
+                return data
             return None
         except Exception as e:
             logger.error(f"Ошибка при получении состояния IP {ip_address}: {str(e)}")
             return None
+    
+    def delete_ip_state(self, ip_address: str) -> bool:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('DELETE FROM ip_states WHERE ip_address = ?', (ip_address,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Ошибка при удалении IP {ip_address}: {str(e)}")
+            self.connection.rollback()
+            return False
     
     def save_ip_change(self, change: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
@@ -180,18 +194,21 @@ class Database:
     def save_website_state(self, state: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
+            state_copy = state.copy()
+            if "check_time" in state_copy and isinstance(state_copy["check_time"], datetime):
+                state_copy["check_time"] = state_copy["check_time"].isoformat()
             cursor.execute('''
             INSERT OR REPLACE INTO website_states 
             (url, is_up, status_code, response_time, error, check_time, data) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
-                state["url"],
-                1 if state["is_up"] else 0,
-                state["status_code"],
-                state["response_time"],
-                state["error"],
-                state["check_time"].isoformat(),
-                json.dumps(state)
+                state_copy["url"],
+                1 if state_copy["is_up"] else 0,
+                state_copy["status_code"],
+                state_copy["response_time"],
+                state_copy["error"],
+                state_copy["check_time"],
+                json.dumps(state_copy)
             ))
             self.connection.commit()
         except Exception as e:
@@ -204,7 +221,10 @@ class Database:
             cursor.execute('SELECT data FROM website_states WHERE url = ?', (url,))
             row = cursor.fetchone()
             if row:
-                return json.loads(row[0])
+                data = json.loads(row[0])
+                if "check_time" in data:
+                    data["check_time"] = datetime.fromisoformat(data["check_time"])
+                return data
             return None
         except Exception as e:
             logger.error(f"Ошибка при получении состояния сайта {url}: {str(e)}")
@@ -231,25 +251,27 @@ class Database:
     def save_cert_info(self, cert_info: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
-            not_before = cert_info["not_before"].isoformat() if "not_before" in cert_info else None
-            not_after = cert_info["not_after"].isoformat() if "not_after" in cert_info else None
+            cert_copy = cert_info.copy()
+            for key in ["not_before", "not_after", "check_time"]:
+                if key in cert_copy and isinstance(cert_copy[key], datetime):
+                    cert_copy[key] = cert_copy[key].isoformat()
             cursor.execute('''
             INSERT OR REPLACE INTO cert_info 
             (domain, common_name, issuer, organization, not_before, not_after, 
              days_to_expiry, is_expiring, is_expired, check_time, data) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                cert_info["domain"],
-                cert_info.get("common_name", "N/A"),
-                cert_info.get("issuer", "N/A"),
-                cert_info.get("organization", "N/A"),
-                not_before,
-                not_after,
-                cert_info.get("days_to_expiry"),
-                1 if cert_info.get("is_expiring", False) else 0,
-                1 if cert_info.get("is_expired", False) else 0,
-                cert_info["check_time"].isoformat(),
-                json.dumps(cert_info)
+                cert_copy["domain"],
+                cert_copy.get("common_name", "N/A"),
+                cert_copy.get("issuer", "N/A"),
+                cert_copy.get("organization", "N/A"),
+                cert_copy.get("not_before"),
+                cert_copy.get("not_after"),
+                cert_copy.get("days_to_expiry"),
+                1 if cert_copy.get("is_expiring", False) else 0,
+                1 if cert_copy.get("is_expired", False) else 0,
+                cert_copy["check_time"],
+                json.dumps(cert_copy)
             ))
             self.connection.commit()
         except Exception as e:
@@ -263,12 +285,9 @@ class Database:
             row = cursor.fetchone()
             if row:
                 cert_info = json.loads(row[0])
-                if "not_before" in cert_info and cert_info["not_before"]:
-                    cert_info["not_before"] = datetime.fromisoformat(cert_info["not_before"])
-                if "not_after" in cert_info and cert_info["not_after"]:
-                    cert_info["not_after"] = datetime.fromisoformat(cert_info["not_after"])
-                if "check_time" in cert_info and cert_info["check_time"]:
-                    cert_info["check_time"] = datetime.fromisoformat(cert_info["check_time"])
+                for key in ["not_before", "not_after", "check_time"]:
+                    if key in cert_info and cert_info[key]:
+                        cert_info[key] = datetime.fromisoformat(cert_info[key])
                 return cert_info
             return None
         except Exception as e:
@@ -308,9 +327,8 @@ class Database:
             return result
         except Exception as e:
             logger.error(f"Ошибка при получении записей из таблицы {table_name}: {str(e)}")
-            raise
+            return []
     
-    # Новые методы для модулей
     def save_port_scan(self, scan_result: Dict[str, Any]) -> None:
         cursor = self.connection.cursor()
         try:
@@ -322,7 +340,7 @@ class Database:
                 ''', (
                     scan_result["ip"],
                     port_data["port"],
-                    "tcp",  # Предполагаем TCP, можно добавить поддержку других протоколов
+                    "tcp",
                     port_data["service"],
                     1,
                     datetime.fromtimestamp(scan_result["timestamp"]).isoformat()
@@ -420,28 +438,28 @@ class Database:
             logger.error(f"Ошибка при сохранении заголовков для {check_data['url']}: {str(e)}")
             self.connection.rollback()
     
-def get_last_security_headers_check(self, url: str) -> Optional[Dict[str, Any]]:
-    cursor = self.connection.cursor()
-    try:
-        cursor.execute('''
-        SELECT header_name, header_value, check_time 
-        FROM security_headers 
-        WHERE url = ?
-        ORDER BY check_time DESC
-        ''', (url,))
-        rows = cursor.fetchall()
-        if rows:
-            headers = {row["header_name"]: row["header_value"] for row in rows}
-            return {
-                "url": url,
-                "headers": headers,
-                "timestamp": datetime.fromisoformat(rows[0]["check_time"]).timestamp(),
-                "security_score": 0  # Значение по умолчанию, так как оно не хранится в таблице
-            }
-        return None
-    except Exception as e:
-        logger.error(f"Ошибка при получении последних заголовков для {url}: {str(e)}")
-        return None
+    def get_last_security_headers_check(self, url: str) -> Optional[Dict[str, Any]]:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute('''
+            SELECT header_name, header_value, check_time 
+            FROM security_headers 
+            WHERE url = ?
+            ORDER BY check_time DESC
+            ''', (url,))
+            rows = cursor.fetchall()
+            if rows:
+                headers = {row["header_name"]: row["header_value"] for row in rows}
+                return {
+                    "url": url,
+                    "headers": headers,
+                    "timestamp": datetime.fromisoformat(rows[0]["check_time"]).timestamp(),
+                    "security_score": 0
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Ошибка при получении последних заголовков для {url}: {str(e)}")
+            return None
     
     def close(self) -> None:
         if self.connection:

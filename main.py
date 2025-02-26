@@ -1,11 +1,9 @@
-"""
-Основной модуль системы мониторинга периметра
-"""
 import logging
 import os
 import time
 import schedule
 from datetime import datetime
+from urllib.parse import urlparse
 
 from core.database import Database
 from core.notification import NotificationManager
@@ -15,7 +13,6 @@ from modules.cert_checker import CertificateChecker
 from modules.port_scanner import PortScanner
 from modules.dns_monitor import DNSMonitor
 from modules.security_headers import SecurityHeadersChecker
-from urllib.parse import urlparse
 import config
 
 logging.basicConfig(
@@ -29,24 +26,17 @@ logging.basicConfig(
 logger = logging.getLogger("PerimeterMonitoring")
 
 class PerimeterMonitor:
-    """Основной класс системы мониторинга"""
-    
     def __init__(self):
         logger.info("Инициализация системы мониторинга периметра")
         os.makedirs('logs', exist_ok=True)
         self.db = Database()
-        if not os.path.exists('.env'):
-            logger.warning("Файл .env не найден, используются значения по умолчанию")
         self.notifier = NotificationManager()
         self.ip_scanner = IPScanner(self.db, self.notifier)
         self.website_monitor = WebsiteMonitor(self.db, self.notifier)
         self.cert_checker = CertificateChecker(self.db, self.notifier)
-        if config.PORT_SCAN_ENABLED:
-            self.port_scanner = PortScanner(self.db, config)
-        if config.DNS_MONITOR_ENABLED:
-            self.dns_monitor = DNSMonitor(self.db, config)
-        if config.SECURITY_HEADERS_CHECK_ENABLED:
-            self.headers_checker = SecurityHeadersChecker(self.db, config)
+        self.port_scanner = PortScanner(self.db, config) if config.PORT_SCAN_ENABLED else None
+        self.dns_monitor = DNSMonitor(self.db, config) if config.DNS_MONITOR_ENABLED else None
+        self.headers_checker = SecurityHeadersChecker(self.db, config) if config.SECURITY_HEADERS_CHECK_ENABLED else None
         logger.info("Система мониторинга инициализирована")
     
     def run_ip_scan(self):
@@ -74,33 +64,33 @@ class PerimeterMonitor:
             logger.error(f"Ошибка при проверке сертификатов: {str(e)}")
     
     def run_port_scan(self):
-        if not config.PORT_SCAN_ENABLED:
+        if not config.PORT_SCAN_ENABLED or not self.port_scanner:
             return
         logger.info("Запуск сканирования портов")
         try:
-            results = self.port_scanner.run_scan(config.IP_RANGES)  # Исправлено на run_scan
+            results = self.port_scanner.scan(config.IP_RANGES)
             logger.info(f"Сканирование портов завершено: {len(results)} изменений обнаружено")
         except Exception as e:
             logger.error(f"Ошибка при сканировании портов: {str(e)}")
     
     def check_dns_records(self):
-        if not config.DNS_MONITOR_ENABLED:
+        if not config.DNS_MONITOR_ENABLED or not self.dns_monitor:
             return
         logger.info("Запуск проверки DNS-записей")
         try:
             domains = [urlparse(url).netloc.split(':')[0] if url.startswith(('http://', 'https://')) else url 
                       for url in config.WEBSITES]
-            results = self.dns_monitor.monitor_domains(domains)  # Исправлено на monitor_domains
+            results = self.dns_monitor.check_all(domains)
             logger.info(f"Проверка DNS-записей завершена: {len(results)} изменений обнаружено")
         except Exception as e:
             logger.error(f"Ошибка при проверке DNS-записей: {str(e)}")
     
     def check_security_headers(self):
-        if not config.SECURITY_HEADERS_CHECK_ENABLED:
+        if not config.SECURITY_HEADERS_CHECK_ENABLED or not self.headers_checker:
             return
         logger.info("Запуск проверки заголовков безопасности")
         try:
-            results = self.headers_checker.check_websites(config.WEBSITES)  # Исправлено на check_websites
+            results = self.headers_checker.check_all(config.WEBSITES)
             logger.info(f"Проверка заголовков безопасности завершена: {len(results)} проблем обнаружено")
         except Exception as e:
             logger.error(f"Ошибка при проверке заголовков безопасности: {str(e)}")
@@ -135,6 +125,7 @@ class PerimeterMonitor:
         except Exception as e:
             logger.critical(f"Критическая ошибка: {str(e)}")
         finally:
+            self.db.close()
             logger.info("Система мониторинга остановлена")
 
 if __name__ == "__main__":

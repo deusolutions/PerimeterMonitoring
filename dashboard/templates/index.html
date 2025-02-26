@@ -54,43 +54,42 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Последние инциденты</h4>
-                </div>
-                <div class="card-body">
-                    {% if recent_alerts %}
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Время</th>
-                                    <th>Тип</th>
-                                    <th>Объект</th>
-                                    <th>Статус</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for alert in recent_alerts %}
-                                <tr class="{% if alert.severity == 'critical' %}table-danger{% elif alert.severity == 'warning' %}table-warning{% else %}table-info{% endif %}">
-                                    <td>{{ alert.timestamp }}</td>
-                                    <td>{{ alert.type }}</td>
-                                    <td>{{ alert.target }}</td>
-                                    <td>{{ alert.status }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    {% else %}
-                        <p class="text-center">Нет новых инцидентов</p>
-                    {% endif %}
-                    <div class="text-center mt-3">
-                        <a href="#" class="btn btn-outline-primary disabled">Все инциденты</a>
-                    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Последние инциденты</h4>
+            </div>
+            <div class="card-body">
+                {% if recent_alerts %}
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Тип</th>
+                                <th>Объект</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for alert in recent_alerts %}
+                            <tr class="{% if alert.severity == 'critical' %}table-danger{% elif alert.severity == 'warning' %}table-warning{% else %}table-info{% endif %}">
+                                <td>{{ alert.timestamp }}</td>
+                                <td>{{ alert.type }}</td>
+                                <td>{{ alert.target }}</td>
+                                <td>{{ alert.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-center">Нет новых инцидентов</p>
+                {% endif %}
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('alerts') }}" class="btn btn-outline-primary">Все инциденты</a>
                 </div>
             </div>
         </div>
+    </div>
 
         <div class="col-md-6 mb-4">
             <div class="card">

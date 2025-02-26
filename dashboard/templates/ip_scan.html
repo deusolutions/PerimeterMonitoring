@@ -38,6 +38,7 @@
                                 <th>IP-адрес</th>
                                 <th>Статус</th>
                                 <th>Имя хоста</th>
+                                <th>Описание</th>
                                 <th>Последняя проверка</th>
                                 <th>Действия</th>
                             </tr>
@@ -54,6 +55,7 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ result.hostname or 'N/A' }}</td>
+                                <td>{{ result.get('description', 'N/A') }}</td>
                                 <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
@@ -97,6 +99,10 @@
                         <label for="ip_address" class="form-label">IP-адрес</label>
                         <input type="text" class="form-control" id="ip_address" name="ip_address" placeholder="192.168.1.1" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="Назначение IP-адреса">
+                    </div>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
                         <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
@@ -127,6 +133,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deleteIpForm" action="{{ url_for('ip_scan') }}" method="post">
                     <input type="hidden" name="ip_address" id="deleteIpAddress">
+                    <input type="hidden" name="delete" value="true">
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>

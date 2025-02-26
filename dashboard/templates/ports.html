@@ -49,8 +49,8 @@
                             <tr class="{% if result.is_open %}table-success{% else %}table-secondary{% endif %}">
                                 <td>{{ result.ip_address }}</td>
                                 <td>{{ result.port }}</td>
-                                <td>{{ result.protocol }}</td>
-                                <td>{{ result.service }}</td>
+                                <td>{{ result.protocol or 'N/A' }}</td>
+                                <td>{{ result.service or 'N/A' }}</td>
                                 <td>
                                     {% if result.is_open %}
                                         <span class="badge bg-success">Открыт</span>
@@ -58,7 +58,7 @@
                                         <span class="badge bg-secondary">Закрыт</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') }}</td>
+                                <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <a href="#" class="btn btn-outline-primary">Детали</a>

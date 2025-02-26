@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">{{ title }}</h4>
+        </div>
+        <div class="card-body">
+            <dl class="row">
+                <dt class="col-sm-3">URL</dt>
+                <dd class="col-sm-9">{{ website_state.url }}</dd>
+                <dt class="col-sm-3">Статус</dt>
+                <dd class="col-sm-9">
+                    {% if website_state.is_up %}
+                        <span class="badge bg-success">Доступен</span>
+                    {% else %}
+                        <span class="badge bg-danger">Недоступен</span>
+                    {% endif %}
+                </dd>
+                <dt class="col-sm-3">Код ответа</dt>
+                <dd class="col-sm-9">{{ website_state.status_code }}</dd>
+                <dt class="col-sm-3">Время отклика</dt>
+                <dd class="col-sm-9">{{ website_state.response_time }} мс</dd>
+                <dt class="col-sm-3">Последняя проверка</dt>
+                <dd class="col-sm-9">{{ website_state.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</dd>
+            </dl>
+            <a href="{{ url_for('websites') }}" class="btn btn-primary">Назад</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

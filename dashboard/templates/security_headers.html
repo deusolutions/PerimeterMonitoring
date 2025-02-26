@@ -47,12 +47,10 @@
                             {% for result in results %}
                             <tr>
                                 <td>{{ result.url }}</td>
-                                <td>{{ result.header_name }}</td>
-                                <td>{{ result.header_value }}</td>
-                                <td>
-                                    <span class="badge bg-success">Безопасно</span> <!-- Упрощение, можно добавить логику -->
-                                </td>
-                                <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') }}</td>
+                                <td>{{ result.header_name or 'N/A' }}</td>
+                                <td>{{ result.header_value or 'N/A' }}</td>
+                                <td><span class="badge bg-success">Безопасно</span></td>
+                                <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
                                         <a href="#" class="btn btn-outline-primary">Детали</a>
