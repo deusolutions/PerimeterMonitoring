@@ -1,13 +1,12 @@
 # Core requirements
 Flask==2.3.3                   # Веб-фреймворк для дашборда
-Flask-WTF==1.1.1              # Поддержка форм в Flask
-SQLAlchemy==2.0.23            # ORM для работы с базой данных
-apscheduler==3.10.4           # Планировщик задач (используется в core/scheduler.py)
-requests==2.31.0              # HTTP-запросы (используется в website_monitor.py, security_headers.py)
-python-dotenv==1.0.0          # Загрузка переменных окружения из .env (config.py)
-pyyaml==6.0.1                 # Поддержка YAML (хотя не используется явно, оставлено из исходного списка)
-cryptography==41.0.5          # Шифрование (возможно, для будущих функций)
-dnspython==2.4.2              # Работа с DNS (dns_monitor.py)
+Flask-WTF==1.2.1              # Поддержка форм в Flask, обновлено!
+Werkzeug==3.0.1              # Зависимость Flask, обновляем для совместимости
+requests==2.31.0              # HTTP-запросы
+python-dotenv==1.0.0          # Загрузка переменных окружения
+dnspython==2.4.2              # Работа с DNS
+schedule==1.2.2               # Планирование задач
+urllib3==2.2.1                # HTTP-клиент (нужен для requests, и возможно, для других проверок)
 
 # Monitoring tools
 pyOpenSSL==23.3.0             # Работа с SSL-сертификатами (возможно, для cert_checker.py)

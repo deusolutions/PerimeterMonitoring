@@ -9,14 +9,19 @@
             <h4 class="mb-0">{{ title }}</h4>
         </div>
         <div class="card-body">
-            <form method="post">
+            <form method="post" action="{{ url_for('ip_edit', ip_address=ip_state.ip_address) }}">
+                 {{ form.hidden_tag() }}
                 <div class="mb-3">
                     <label for="ip_address" class="form-label">IP-адрес</label>
                     <input type="text" class="form-control" id="ip_address" value="{{ ip_state.ip_address }}" disabled>
+                     <!--  Убрал name="ip_address" так как поле disabled -->
                 </div>
                 <div class="mb-3">
-                    <label for="description" class="form-label">Описание</label>
-                    <input type="text" class="form-control" id="description" name="description" value="{{ ip_state.description or '' }}">
+                   {{ form.description.label(class="form-label") }}
+                   {{ form.description(class="form-control") }}
+                    {% for error in form.description.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
                 <a href="{{ url_for('ip_scan') }}" class="btn btn-secondary">Отмена</a>

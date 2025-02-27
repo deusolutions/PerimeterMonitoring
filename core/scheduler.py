@@ -13,12 +13,18 @@ class Scheduler:
         self._stop_event = threading.Event()
         self._thread = None
         self._tasks = {}
-    
+
     def add_task(self, name: str, func: Callable, interval: int, interval_type: str = 'minutes', **kwargs) -> bool:
+        if self.is_running():
+            logger.error("Нельзя добавлять задачи после запуска планировщика.")
+            return False
+        if not isinstance(interval, int) or interval <= 0:
+            logger.error(f"Некорректный интервал: {interval}")
+            return False
         if name in self._tasks:
             logger.warning(f"Задача с именем '{name}' уже существует")
             return False
-        
+
         def task_wrapper():
             try:
                 logger.info(f"Выполнение задачи '{name}'")
@@ -28,11 +34,10 @@ class Scheduler:
                 logger.info(f"Задача '{name}' выполнена за {execution_time:.2f} сек")
                 self._tasks[name]['last_run'] = datetime.now()
                 self._tasks[name]['last_execution_time'] = execution_time
-                return result
             except Exception as e:
                 logger.error(f"Ошибка при выполнении задачи '{name}': {str(e)}")
-                self._tasks[name]['last_error'] = str(e)
-        
+                self._tasks[name]['last_error'] = str(e)  # Сохраняем ошибку
+
         job = None
         if interval_type == 'seconds':
             job = schedule.every(interval).seconds.do(task_wrapper)
@@ -45,7 +50,7 @@ class Scheduler:
         else:
             logger.error(f"Неизвестный тип интервала: {interval_type}")
             return False
-        
+
         self._tasks[name] = {
             'job': job,
             'function': func.__name__,
@@ -58,41 +63,41 @@ class Scheduler:
             'is_active': True,
             'func': func
         }
-        
+
         logger.info(f"Задача '{name}' добавлена в планировщик (интервал: {interval} {interval_type})")
         return True
-    
+
     def remove_task(self, name: str) -> bool:
         if name not in self._tasks:
             logger.warning(f"Задача с именем '{name}' не найдена")
             return False
-        
+
         schedule.cancel_job(self._tasks[name]['job'])
         del self._tasks[name]
         logger.info(f"Задача '{name}' удалена из планировщика")
         return True
-    
+
     def pause_task(self, name: str) -> bool:
         if name not in self._tasks:
             logger.warning(f"Задача с именем '{name}' не найдена")
             return False
-        
+
         if self._tasks[name]['is_active']:
             schedule.cancel_job(self._tasks[name]['job'])
             self._tasks[name]['is_active'] = False
             logger.info(f"Задача '{name}' приостановлена")
         return True
-    
+
     def resume_task(self, name: str) -> bool:
         if name not in self._tasks:
             logger.warning(f"Задача с именем '{name}' не найдена")
             return False
-        
+
         if not self._tasks[name]['is_active']:
             interval = self._tasks[name]['interval']
             interval_type = self._tasks[name]['interval_type']
             func = self._tasks[name]['func']
-            
+
             def task_wrapper():
                 try:
                     logger.info(f"Выполнение задачи '{name}'")
@@ -102,11 +107,10 @@ class Scheduler:
                     logger.info(f"Задача '{name}' выполнена за {execution_time:.2f} сек")
                     self._tasks[name]['last_run'] = datetime.now()
                     self._tasks[name]['last_execution_time'] = execution_time
-                    return result
                 except Exception as e:
                     logger.error(f"Ошибка при выполнении задачи '{name}': {str(e)}")
                     self._tasks[name]['last_error'] = str(e)
-            
+
             if interval_type == 'seconds':
                 job = schedule.every(interval).seconds.do(task_wrapper)
             elif interval_type == 'minutes':
@@ -119,7 +123,7 @@ class Scheduler:
             self._tasks[name]['is_active'] = True
             logger.info(f"Задача '{name}' возобновлена")
         return True
-    
+
     def get_task_info(self, name: str = None) -> Dict[str, Any]:
         if name is not None:
             if name not in self._tasks:
@@ -131,7 +135,7 @@ class Scheduler:
             if 'func' in task_info:
                 del task_info['func']
             return task_info
-        
+
         result = {}
         for task_name, task_info in self._tasks.items():
             task_copy = task_info.copy()
@@ -141,29 +145,29 @@ class Scheduler:
                 del task_copy['func']
             result[task_name] = task_copy
         return result
-    
+
     def start(self):
         if self._thread is not None and self._thread.is_alive():
             logger.warning("Планировщик уже запущен")
             return
-        
+
         self._stop_event.clear()
-        
-        def run():
+
+        def run():  # Добавлено двоеточие
             logger.info("Планировщик задач запущен")
             while not self._stop_event.is_set():
                 schedule.run_pending()
                 time.sleep(1)
             logger.info("Планировщик задач остановлен")
-        
+
         self._thread = threading.Thread(target=run, daemon=True)
         self._thread.start()
-    
+
     def stop(self):
         if self._thread is None or not self._thread.is_alive():
             logger.warning("Планировщик не запущен")
             return
-        
+
         logger.info("Остановка планировщика задач...")
         self._stop_event.set()
         self._thread.join(timeout=5)
@@ -172,6 +176,6 @@ class Scheduler:
         else:
             logger.info("Планировщик задач остановлен")
             self._thread = None
-    
+
     def is_running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()

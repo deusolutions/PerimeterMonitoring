@@ -11,6 +11,7 @@
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addCertModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
+               <!-- Фильтры (оставляем как есть)-->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
@@ -72,7 +73,7 @@
                                         <span class="badge bg-success">Действует</span>
                                     {% endif %}
                                 </td>
-                                <td>
+                                 <td style="position: relative;"> <!-- Добавлено position: relative -->
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -80,9 +81,9 @@
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ url_for('certificate_details', domain=cert.domain) }}">Детали</a></li>
                                             <li><a class="dropdown-item" href="{{ url_for('certificate_check', domain=cert.domain) }}">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="{{ url_for('certificate_edit', domain=cert.domain) }}">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('certificate_edit', cert_id=cert.id) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteCertModal" data-domain="{{ cert.domain }}">Удалить</a></li>
+                                             <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteCertModal" data-domain="{{ cert.domain }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -90,6 +91,16 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <!-- Пагинация -->
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('certificates', page=page-1, status=status_filter) }}">Назад</a>
+                    {% endif %}
+                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
+                    {% if page * per_page < total_results %}
+                        <a href="{{ url_for('certificates', page=page+1, status=status_filter) }}">Вперед</a>
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-info text-center">
@@ -99,29 +110,36 @@
         </div>
     </div>
 </div>
-
+<!-- Модальное окно добавления сертификата -->
 <div class="modal fade" id="addCertModal" tabindex="-1" aria-labelledby="addCertModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addCertModalLabel">Добавить сертификат для мониторинга</h5>
+                <h5 class="modal-title" id="addCertModalLabel">Добавить сертификат</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addCertForm" action="{{ url_for('certificates') }}" method="post">
+               <form method="post" action="{{ url_for('certificates') }}">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="domain" class="form-label">Домен</label>
-                        <input type="text" class="form-control" id="domain" name="domain" placeholder="example.com" required>
+                        {{ form.domain.label }}
+                        {{ form.domain(class="form-control", placeholder="example.com") }}
+                        {% for error in form.domain.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                        {% endfor %}
                     </div>
                     <div class="mb-3">
-                        <label for="port" class="form-label">Порт (опционально)</label>
-                        <input type="number" class="form-control" id="port" name="port" value="443">
+                         {{ form.port.label }}
+                         {{ form.port(class="form-control", placeholder="443") }}
+                          {% for error in form.port.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                         {% endfor %}
                     </div>
                     <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
-                        <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
+                       {{ form.check_now(class="form-check-input") }}
+                       {{ form.check_now.label(class="form-check-label") }}
                     </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                    {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
@@ -130,7 +148,7 @@
         </div>
     </div>
 </div>
-
+<!-- Модальное окно удаления сертификата -->
 <div class="modal fade" id="deleteCertModal" tabindex="-1" aria-labelledby="deleteCertModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -140,20 +158,19 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить сертификат для домена <span id="certDomainToDelete"></span>?</p>
-                <p class="text-danger">Это действие нельзя отменить.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <form id="deleteCertForm" action="{{ url_for('certificates') }}" method="post">
+               <form method="post" action="{{ url_for('certificates') }}">
+                    {{ form.hidden_tag() }}  <!-- CSRF -->
                     <input type="hidden" name="domain" id="deleteCertDomain">
                     <input type="hidden" name="delete" value="true">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {

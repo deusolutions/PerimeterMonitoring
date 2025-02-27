@@ -11,6 +11,7 @@
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addWebsiteModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
+                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
@@ -57,7 +58,7 @@
                                 <td>{{ result.status_code or 'N/A' }}</td>
                                 <td>{{ result.response_time or 'N/A' }}</td>
                                 <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
-                                <td>
+                                <td style="position: relative"> <!-- Добавлено position: relative -->
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -65,9 +66,9 @@
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ url_for('website_details', url=result.url) }}">Детали</a></li>
                                             <li><a class="dropdown-item" href="{{ url_for('website_check', url=result.url) }}">Проверить</a></li>
-                                            <li><a class="dropdown-item" href="{{ url_for('website_edit', url=result.url) }}">Редактировать</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('website_edit', website_id=result.id) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteWebsiteModal" data-url="{{ result.url }}">Удалить</a></li>
+                                           <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteWebsiteModal" data-url="{{ result.url }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -75,6 +76,16 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+               <!-- Пагинация -->
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('websites', page=page-1, status=status_filter) }}">Назад</a>
+                    {% endif %}
+                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
+                    {% if page * per_page < total_results %}
+                        <a href="{{ url_for('websites', page=page+1, status=status_filter) }}">Вперед</a>
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-info text-center">
@@ -84,25 +95,29 @@
         </div>
     </div>
 </div>
-
+<!-- Модальное окно добавления сайта -->
 <div class="modal fade" id="addWebsiteModal" tabindex="-1" aria-labelledby="addWebsiteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addWebsiteModalLabel">Добавить веб-сайт для мониторинга</h5>
+                <h5 class="modal-title" id="addWebsiteModalLabel">Добавить веб-сайт</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addWebsiteForm" action="{{ url_for('websites') }}" method="post">
+                <form method="post" action="{{ url_for('websites') }}">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="url" class="form-label">URL</label>
-                        <input type="text" class="form-control" id="url" name="url" placeholder="https://example.com" required>
+                       {{ form.url.label }}
+                       {{ form.url(class="form-control", placeholder="https://example.com") }}
+                        {% for error in form.url.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                        {% endfor %}
                     </div>
                     <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
-                        <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
+                        {{ form.check_now(class="form-check-input") }}
+                        {{ form.check_now.label(class="form-check-label") }}
                     </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                    {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
@@ -112,7 +127,8 @@
     </div>
 </div>
 
-<div class="modal fade" id="deleteWebsiteModal" tabindex="-1" aria-labelledby="deleteWebsiteModalLabel" aria-hidden="true">
+<!-- Модальное окно удаления сайта -->
+ <div class="modal fade" id="deleteWebsiteModal" tabindex="-1" aria-labelledby="deleteWebsiteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -121,13 +137,13 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить веб-сайт <span id="websiteUrlToDelete"></span>?</p>
-                <p class="text-danger">Это действие нельзя отменить.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deleteWebsiteForm" action="{{ url_for('websites') }}" method="post">
+                   {{ form.hidden_tag() }}
                     <input type="hidden" name="url" id="deleteWebsiteUrl">
                     <input type="hidden" name="delete" value="true">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>

@@ -9,10 +9,21 @@
             <h4 class="mb-0">{{ title }}</h4>
         </div>
         <div class="card-body">
-            <form method="post">
+           <form method="post" action="{{ url_for('certificate_edit', cert_id=cert_state.id) }}">
+                {{ form.hidden_tag() }}
                 <div class="mb-3">
-                    <label for="domain" class="form-label">Домен</label>
-                    <input type="text" class="form-control" id="domain" name="domain" value="{{ cert_state.domain }}" required>
+                     {{ form.domain.label }}
+                     {{ form.domain(class="form-control") }}
+                      {% for error in form.domain.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                      {% endfor %}
+                </div>
+                <div class="mb-3">
+                      {{ form.port.label }}
+                      {{ form.port(class="form-control") }}
+                       {% for error in form.port.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                      {% endfor %}
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
                 <a href="{{ url_for('certificates') }}" class="btn btn-secondary">Отмена</a>

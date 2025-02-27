@@ -1,3 +1,4 @@
+# main.py
 import logging
 from typing import Dict, Any
 
@@ -82,13 +83,13 @@ class PerimeterMonitor:
 
     def setup_scheduling(self) -> None:
         logger.info("Настройка расписания проверок")
-        # Передаем функции напрямую как методы экземпляра
-        self.scheduler.add_task("run_ip_scan", self.run_ip_scan, 1, 'minutes')
-        self.scheduler.add_task("check_websites", self.check_websites, 1, 'minutes')
-        self.scheduler.add_task("check_certificates", self.check_certificates, 24, 'hours')
-        self.scheduler.add_task("run_port_scan", self.run_port_scan, 24, 'hours')
-        self.scheduler.add_task("check_dns_records", self.check_dns_records, 24, 'hours')
-        self.scheduler.add_task("check_security_headers", self.check_security_headers, 24, 'hours')
+        # Передаем функции напрямую как методы экземпляра и берем интервалы из конфига
+        self.scheduler.add_task("run_ip_scan", self.run_ip_scan, config.IP_SCAN_INTERVAL, 'seconds')
+        self.scheduler.add_task("check_websites", self.check_websites, config.WEBSITE_CHECK_INTERVAL, 'seconds')
+        self.scheduler.add_task("check_certificates", self.check_certificates, config.CERTIFICATE_CHECK_INTERVAL, 'hours')
+        self.scheduler.add_task("run_port_scan", self.run_port_scan, config.PORT_SCAN_INTERVAL, 'hours')
+        self.scheduler.add_task("check_dns_records", self.check_dns_records, config.DNS_CHECK_INTERVAL, 'hours')
+        self.scheduler.add_task("check_security_headers", self.check_security_headers, config.HEADERS_CHECK_INTERVAL, 'hours')
         self.scheduler.start()
         logger.info("Расписание проверок настроено")
 
@@ -117,7 +118,8 @@ class PerimeterMonitor:
         self.headers_checker.check_all()
 
 if __name__ == "__main__":
-    db = Database()
-    db.initialize()
-    monitor = PerimeterMonitor(db)
-    monitor.run()
+    # db = Database() #УДАЛЯЕМ
+    # db.initialize() #УДАЛЯЕМ
+    # monitor = PerimeterMonitor(db) #УДАЛЯЕМ
+    # monitor.run()  #УДАЛЯЕМ
+    pass # Запуск теперь происходит из run.py

@@ -11,6 +11,7 @@
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addDNSModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
+                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
@@ -30,6 +31,7 @@
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
+
             </div>
         </div>
         <div class="card-body">
@@ -54,7 +56,7 @@
                                 <td>{{ result.value or 'N/A' }}</td>
                                 <td>{{ result.ttl or 'N/A' }}</td>
                                 <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
-                                <td>
+                                 <td style="position: relative;"> <!-- Добавлено position: relative -->
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -71,6 +73,16 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Пагинация -->
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('dns_monitoring', page=page-1, record_type=record_type_filter) }}">Назад</a>
+                    {% endif %}
+                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
+                    {% if page * per_page < total_results %}
+                        <a href="{{ url_for('dns_monitoring', page=page+1, record_type=record_type_filter) }}">Вперед</a>
+                    {% endif %}
+                </div>
             {% else %}
                 <div class="alert alert-info text-center">
                     DNS-записей не найдено
@@ -80,24 +92,29 @@
     </div>
 </div>
 
+<!-- Модальное окно добавления DNS -->
 <div class="modal fade" id="addDNSModal" tabindex="-1" aria-labelledby="addDNSModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addDNSModalLabel">Добавить домен для мониторинга DNS</h5>
+                <h5 class="modal-title" id="addDNSModalLabel">Добавить DNS</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addDNSForm" action="{{ url_for('dns_monitoring') }}" method="post">
+               <form method="post" action="{{ url_for('dns_monitoring') }}">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="domain" class="form-label">Домен</label>
-                        <input type="text" class="form-control" id="domain" name="domain" placeholder="example.com" required>
+                        {{ form.domain.label }}
+                         {{ form.domain(class="form-control", placeholder="example.com") }}
+                          {% for error in form.domain.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                         {% endfor %}
                     </div>
                     <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
-                        <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
+                       {{ form.check_now(class="form-check-input") }}
+                       {{ form.check_now.label(class="form-check-label") }}
                     </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                     {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
@@ -106,7 +123,7 @@
         </div>
     </div>
 </div>
-
+<!-- Модальное окно удаления DNS -->
 <div class="modal fade" id="deleteDNSModal" tabindex="-1" aria-labelledby="deleteDNSModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -116,13 +133,13 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить мониторинг DNS для домена <span id="dnsDomainToDelete"></span>?</p>
-                <p class="text-danger">Это действие нельзя отменить.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <form id="deleteDNSForm" action="{{ url_for('dns_monitoring') }}" method="post">
+                 <form method="post" action="{{ url_for('dns_monitoring') }}">
+                    {{ form.hidden_tag() }}
                     <input type="hidden" name="domain" id="deleteDNSDomain">
                     <input type="hidden" name="delete" value="true">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
@@ -132,17 +149,17 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const deleteDNSModal = document.getElementById('deleteDNSModal');
-        if (deleteDNSModal) {
-            deleteDNSModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                const domain = button.getAttribute('data-domain');
-                document.getElementById('dnsDomainToDelete').textContent = domain;
-                document.getElementById('deleteDNSDomain').value = domain;
-            });
-        }
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteDNSModal = document.getElementById('deleteDNSModal');
+    if (deleteDNSModal) {
+        deleteDNSModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const domain = button.getAttribute('data-domain');
+            document.getElementById('dnsDomainToDelete').textContent = domain;
+            document.getElementById('deleteDNSDomain').value = domain;
+        });
+    }
+});
 </script>
 {% endblock %}
 {% endblock %}

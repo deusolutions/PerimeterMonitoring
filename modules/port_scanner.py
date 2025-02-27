@@ -20,7 +20,7 @@ class PortScanner:
         except AttributeError:
             logger.error("Ошибка при загрузке списка портов")
             self.common_ports = [80, 443]  # Значения по умолчанию
-    
+
     def scan(self, ip: str, ports: List[str]) -> List[Dict[str, Any]]:
         if not self.enabled:
             logger.info("Сканирование портов отключено")
@@ -29,7 +29,7 @@ class PortScanner:
         results = []
         changes = []
         try:
-            ports_to_scan = [int(p.strip()) for p in ports if p.strip().isdigit()]
+            ports_to_scan = [int(p) for p in ports if p.isdigit()]  # Исправлено
             if not ports_to_scan:
                 logger.warning(f"Нет валидных портов для сканирования {ip}")
                 return []
@@ -57,7 +57,7 @@ class PortScanner:
         ip_states = self.db.get_all_records("ip_scan_results")
         for ip_state in ip_states:
             ip = ip_state["ip_address"]
-            changes.extend(self.scan(ip, [str(p) for p in self.common_ports]))
+            changes.extend(self.scan(ip, [str(p) for p in self.common_ports])) #Добавил приведение к строке
         return changes
 
     def _scan_port(self, ip: str, port: int) -> Dict[str, Any]:

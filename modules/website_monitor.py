@@ -14,8 +14,8 @@ class WebsiteMonitor:
         self.db = db
         self.notifier = notifier
         self.websites = config.WEBSITES
-        self.timeout = config.WEBSITE_TIMEOUT  # Используем WEBSITE_TIMEOUT из config.py
-    
+        self.timeout = config.WEBSITE_TIMEOUT
+
     def _check_website(self, url: str) -> Dict[str, Any]:
         try:
             response = requests.get(url, timeout=self.timeout, verify=True)
@@ -37,7 +37,7 @@ class WebsiteMonitor:
                 "error": str(e),
                 "check_time": datetime.now()
             }
-    
+
     def check_all(self, urls: Optional[List[str]] = None) -> Dict[str, Any]:
         if urls is None:
             websites = self.websites
@@ -83,12 +83,12 @@ class WebsiteMonitor:
             "down_count": down_count,
             "changes": changes
         }
-    
+
     def _notify_down(self, url: str, error: str) -> None:
         title = f"🔴 Сайт {url} недоступен"
         message = f"Сайт {url} перестал отвечать.\nОшибка: {error}"
         self.notifier.send_notification(title, message, priority="high")
-    
+
     def _notify_up(self, url: str) -> None:
         title = f"🟢 Сайт {url} снова доступен"
         message = f"Сайт {url} восстановил работу."

@@ -9,10 +9,14 @@
             <h4 class="mb-0">{{ title }}</h4>
         </div>
         <div class="card-body">
-            <form method="post">
+            <form method="post" action="{{ url_for('website_edit', website_id=website_state.id) }}">
+                {{ form.hidden_tag() }}
                 <div class="mb-3">
-                    <label for="url" class="form-label">URL</label>
-                    <input type="text" class="form-control" id="url" name="url" value="{{ website_state.url }}" required>
+                    {{ form.url.label }}
+                    {{ form.url(class="form-control") }}
+                     {% for error in form.url.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                     {% endfor %}
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
                 <a href="{{ url_for('websites') }}" class="btn btn-secondary">Отмена</a>

@@ -3,96 +3,41 @@
 {% block title %}Главная{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Обзор системы</h4>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>IP-адресов:</strong> {{ ip_count }}</p>
-                        <p><strong>Веб-сайтов:</strong> {{ website_count }}</p>
-                        <p><strong>Сертификатов:</strong> {{ cert_count }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Активных инцидентов:</strong> {{ alerts_count }}</p>
-                        <p><strong>Истекающих сертификатов:</strong> {{ expiring_certs|length }}</p>
-                        <p><strong>Текущее время:</strong> {{ current_time.strftime('%H:%M:%S %d.%m.%Y') }}</p>
-                    </div>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Обзор системы</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>IP-адресов в мониторинге:</strong> {{ ip_count }}</p>
+                    <p><strong>Веб-сайтов в мониторинге:</strong> {{ website_count }}</p>
+                    <p><strong>Сертификатов в мониторинге:</strong> {{ cert_count }}</p>
+                    <p><strong>Активных инцидентов:</strong> {{ alerts_count }}</p> <!--  Замени на реальные данные -->
+                    <p><strong>Истекающих сертификатов:</strong> {{ expiring_certs|length }}</p>
+                    <p><strong>Текущее время:</strong> {{ current_time.strftime('%H:%M:%S %d.%m.%Y') }}</p>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Последние инциденты</h4>
-            </div>
-            <div class="card-body">
-                {% if recent_alerts %}
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Время</th>
-                                <th>Тип</th>
-                                <th>Объект</th>
-                                <th>Статус</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for alert in recent_alerts %}
-                            <tr class="{% if alert.severity == 'critical' %}table-danger{% elif alert.severity == 'warning' %}table-warning{% else %}table-info{% endif %}">
-                                <td>{{ alert.timestamp }}</td>
-                                <td>{{ alert.type }}</td>
-                                <td>{{ alert.target }}</td>
-                                <td>{{ alert.status }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="text-center">Нет новых инцидентов</p>
-                {% endif %}
-                <div class="text-center mt-3">
-                    <a href="{{ url_for('alerts') }}" class="btn btn-outline-primary">Все инциденты</a>
+         <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-white">
+                    <h4 class="mb-0">Истекающие сертификаты</h4>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Истекающие сертификаты</h4>
-            </div>
-            <div class="card-body">
-                {% if expiring_certs %}
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Домен</th>
-                                <th>Издатель</th>
-                                <th>Истекает</th>
-                                <th>Осталось дней</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for cert in expiring_certs %}
-                            <tr class="{% if cert.days_to_expiry < 0 %}table-danger{% elif cert.days_to_expiry < 7 %}table-warning{% else %}table-info{% endif %}">
-                                <td>{{ cert.domain }}</td>
-                                <td>{{ cert.issuer }}</td>
-                                <td>{{ cert.not_after.strftime('%H:%M:%S %d.%m.%Y') if cert.not_after else 'N/A' }}</td>
-                                <td>{{ cert.days_to_expiry }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p class="text-center">Нет истекающих сертификатов</p>
-                {% endif %}
+                <div class="card-body">
+                    {% if expiring_certs %}
+                    <ul class="list-group">
+                        {% for cert in expiring_certs %}
+                        <li class="list-group-item list-group-item-warning">
+                            {{ cert.domain }} (Истекает: {{ cert.not_after.strftime('%d.%m.%Y') }})
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p>Нет истекающих сертификатов.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

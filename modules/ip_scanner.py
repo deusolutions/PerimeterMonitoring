@@ -18,7 +18,7 @@ class IPScanner:
         self.notifier = notifier
         self.timeout = config.IP_SCAN_TIMEOUT
         self.ip_ranges = config.IP_RANGES
-    
+
     def _ping(self, ip_address: str) -> bool:
         param = '-n' if platform.system().lower() == 'windows' else '-c'
         command = ['ping', param, '1', '-W', str(self.timeout), ip_address]
@@ -27,14 +27,14 @@ class IPScanner:
         except Exception as e:
             logger.error(f"Ошибка при выполнении ping до {ip_address}: {str(e)}")
             return False
-    
+
     def _get_hostname(self, ip_address: str) -> str:
         try:
             return socket.getfqdn(ip_address)
         except Exception as e:
             logger.debug(f"Невозможно получить имя хоста для {ip_address}: {str(e)}")
             return ""
-    
+
     def _scan_single_ip(self, ip_address: str) -> Dict[str, Any]:
         is_up = self._ping(ip_address)
         hostname = self._get_hostname(ip_address) if is_up else ""
@@ -45,28 +45,33 @@ class IPScanner:
             "scan_time": datetime.now(),
             "description": ""  # Добавляем по умолчанию
         }
-    
+
     def _expand_ip_ranges(self) -> List[str]:
         all_ips = []
         for ip_range in self.ip_ranges:
             ip_range = ip_range.strip()
-            if not ip_range:
-                continue
             try:
                 if "/" in ip_range:
                     network = ipaddress.ip_network(ip_range, strict=False)
-                    all_ips.extend([str(ip) for ip in network.hosts()])
+                    all_ips.extend([str(ip) for ip in network.hosts()])  # Добавляем только хосты
                 elif "-" in ip_range:
                     start_ip, end_ip = ip_range.split("-")
                     start_ip = ipaddress.IPv4Address(start_ip.strip())
                     end_ip = ipaddress.IPv4Address(end_ip.strip())
+
+                    # Проверка на корректный диапазон
+                    if start_ip > end_ip:
+                        logger.error(f"Некорректный диапазон: {ip_range}. Начальный IP больше конечного.")
+                        continue
+
                     all_ips.extend([str(ipaddress.IPv4Address(ip)) for ip in range(int(start_ip), int(end_ip) + 1)])
                 else:
-                    all_ips.append(ip_range)
+                    all_ips.append(ip_range)  # Добавляем как есть
             except Exception as e:
                 logger.error(f"Ошибка при обработке диапазона IP {ip_range}: {str(e)}")
         return all_ips
-    
+
+
     def scan(self, ip_list: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         if ip_list is None:
             ip_addresses = self._expand_ip_ranges()
@@ -84,7 +89,7 @@ class IPScanner:
                     self.db.save_ip_state(scan_result)
                     continue
                 if (previous_state["is_up"] != scan_result["is_up"] or
-                    previous_state["hostname"] != scan_result["hostname"]):
+                        previous_state["hostname"] != scan_result["hostname"]):
                     change = {
                         "ip_address": ip,
                         "old_state": previous_state,
@@ -99,7 +104,7 @@ class IPScanner:
                 logger.error(f"Ошибка при сканировании IP {ip}: {str(e)}")
         logger.info(f"Сканирование завершено. Обнаружено {len(changes)} изменений.")
         return changes
-    
+
     def _notify_change(self, change: Dict[str, Any]) -> None:
         ip = change["ip_address"]
         old_state = change["old_state"]

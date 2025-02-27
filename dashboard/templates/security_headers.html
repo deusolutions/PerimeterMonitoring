@@ -11,6 +11,7 @@
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addHeadersModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
+                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
@@ -49,7 +50,7 @@
                                 <td>{{ result.header_name or 'N/A' }}</td>
                                 <td>{{ result.header_value or 'N/A' }}</td>
                                 <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
-                                <td>
+                                <td style="position:relative;"> <!-- Добавлено position: relative -->
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -66,6 +67,16 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Пагинация -->
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('security_headers', page=page-1) }}">Назад</a>
+                    {% endif %}
+                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
+                    {% if page * per_page < total_results %}
+                        <a href="{{ url_for('security_headers', page=page+1) }}">Вперед</a>
+                    {% endif %}
+                </div>
             {% else %}
                 <div class="alert alert-info text-center">
                     Заголовков безопасности не найдено
@@ -75,24 +86,29 @@
     </div>
 </div>
 
+<!-- Модальное окно добавления проверки заголовков -->
 <div class="modal fade" id="addHeadersModal" tabindex="-1" aria-labelledby="addHeadersModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addHeadersModalLabel">Добавить проверку заголовков</h5>
+                <h5 class="modal-title" id="addHeadersModalLabel">Добавить проверку</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addHeadersForm" action="{{ url_for('security_headers') }}" method="post">
+                 <form method="post" action="{{ url_for('security_headers') }}">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="url" class="form-label">URL</label>
-                        <input type="text" class="form-control" id="url" name="url" placeholder="https://example.com" required>
+                        {{ form.url.label }}
+                        {{ form.url(class="form-control", placeholder="https://example.com") }}
+                         {% for error in form.url.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                         {% endfor %}
                     </div>
                     <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
-                        <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
+                        {{ form.check_now(class="form-check-input") }}
+                         {{ form.check_now.label(class="form-check-label") }}
                     </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                    {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
@@ -101,7 +117,7 @@
         </div>
     </div>
 </div>
-
+<!-- Модальное окно удаления проверки заголовков-->
 <div class="modal fade" id="deleteHeadersModal" tabindex="-1" aria-labelledby="deleteHeadersModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -111,13 +127,13 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить проверку заголовков для <span id="headersUrlToDelete"></span>?</p>
-                <p class="text-danger">Это действие нельзя отменить.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deleteHeadersForm" action="{{ url_for('security_headers') }}" method="post">
+                   {{ form.hidden_tag() }}
                     <input type="hidden" name="url" id="deleteHeadersUrl">
                     <input type="hidden" name="delete" value="true">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>

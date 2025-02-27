@@ -1,3 +1,4 @@
+/* static/css/style.css */
 
 /* Basic styles */
 body {
@@ -12,34 +13,62 @@ body {
 
 .card {
     margin-bottom: 1rem;
+    overflow: visible !important; /* Разрешаем содержимому выходить за пределы карточки */
 }
 
-/* Предотвращаем горизонтальный скролл в card-body */
+/* Предотвращаем скролл внутри card-body */
 .card-body {
-    overflow-x: hidden;
+    overflow: visible !important; /* Убираем любой скролл, чтобы dropdown-menu не обрезалось */
+    max-width: 100%; /* Ограничиваем ширину до контейнера */
+    padding: 1rem; /* Стандартный отступ от Bootstrap */
 }
 
-/* Улучшаем выпадающее меню */
+/* Улучшаем таблицу внутри card-body */
+.table-responsive {
+    overflow: visible !important; /* Убираем скролл в таблице, чтобы dropdown-menu было видно */
+    position: relative; /* Основа для позиционирования выпадающих меню */
+    max-width: 100%; /* Ограничиваем ширину */
+}
+
+/* Убеждаемся, что таблица не расширяется */
+.table {
+    width: 100%; /* Таблица занимает доступную ширину */
+    table-layout: auto; /* Автоматическая подстройка колонок */
+    margin-bottom: 0; /* Убираем лишний отступ снизу */
+}
+
+/* Стили для выпадающего меню */
+.dropdown {
+    position: relative; /* Основа для абсолютного позиционирования */
+}
+
 .dropdown-menu {
-    min-width: 150px; /* Фиксированная минимальная ширина */
+    min-width: 150px; /* Минимальная ширина меню */
     max-width: 200px; /* Ограничение максимальной ширины */
     white-space: nowrap; /* Предотвращаем перенос текста */
-    overflow: hidden; /* Скрываем переполнение */
-    text-overflow: ellipsis; /* Добавляем многоточие для длинных пунктов */
+    overflow: hidden; /* Скрываем переполнение текста */
+    text-overflow: ellipsis; /* Многоточие для длинных пунктов */
+    position: absolute; /* Абсолютное позиционирование относительно .dropdown */
+    right: 0; /* Привязываем к правому краю кнопки */
+    left: auto; /* Отключаем выравнивание слева */
+    top: 100%; /* Открывается под кнопкой */
+    z-index: 1050; /* Увеличиваем z-index выше стандартного Bootstrap (1000) */
+    margin-top: 5px; /* Небольшой отступ от кнопки */
+    transform: translateX(0); /* Убедимся, что меню не смещается */
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); /* Тень для читаемости */
 }
 
-/* Позиционирование меню справа, чтобы не вылезало за таблицу */
-.table-responsive {
-    position: relative;
+/* Дополнительная защита от переполнения */
+.dropdown-toggle {
+    white-space: nowrap; /* Предотвращаем перенос текста кнопки */
 }
 
-.dropdown {
-    position: relative;
+/* Увеличиваем специфичность для переопределения Bootstrap */
+.card .card-body .table-responsive {
+    overflow: visible !important; /* Убираем скролл на всех уровнях */
 }
 
-.dropdown-menu {
-    position: absolute;
-    right: 0; /* Открывается вправо от кнопки */
-    left: auto;
-    z-index: 1000; /* Убедимся, что меню поверх всего */
+/* Дополнительно: предотвращаем обрезку меню на границах контейнера */
+.container, .container-fluid {
+    overflow: visible !important; /* Убираем обрезку на уровне контейнера */
 }

@@ -11,6 +11,7 @@
                 <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPortScanModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
+                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
@@ -59,7 +60,7 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
-                                <td>
+                                <td style="position: relative;">  <!-- Добавлено position: relative -->
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -67,7 +68,7 @@
                                         <ul class="dropdown-menu">
                                             <li><a class="dropdown-item" href="{{ url_for('port_check', ip_address=result.ip_address) }}">Проверить</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deletePortModal" data-ip-address="{{ result.ip_address }}">Удалить</a></li>
+                                           <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deletePortModal" data-ip-address="{{ result.ip_address }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -75,6 +76,16 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <!-- Пагинация -->
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ url_for('port_scanning', page=page-1, status=status_filter) }}">Назад</a>
+                    {% endif %}
+                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
+                    {% if page * per_page < total_results %}
+                        <a href="{{ url_for('port_scanning', page=page+1, status=status_filter) }}">Вперед</a>
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-info text-center">
@@ -85,29 +96,37 @@
     </div>
 </div>
 
+<!-- Модальное окно добавления сканирования портов -->
 <div class="modal fade" id="addPortScanModal" tabindex="-1" aria-labelledby="addPortScanModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addPortScanModalLabel">Добавить сканирование портов</h5>
+                <h5 class="modal-title" id="addPortScanModalLabel">Добавить сканирование</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addPortScanForm" action="{{ url_for('port_scanning') }}" method="post">
-                    <div class="mb-3">
-                        <label for="ip_address" class="form-label">IP-адрес</label>
-                        <input type="text" class="form-control" id="ip_address" name="ip_address" placeholder="192.168.1.1" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="ports" class="form-label">Порты (через запятую)</label>
-                        <input type="text" class="form-control" id="ports" name="ports" placeholder="80,443" value="80,443">
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="check_now" name="check_now" checked>
-                        <label class="form-check-label" for="check_now">Проверить сразу после добавления</label>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
-                </form>
+              <form method="post" action="{{ url_for('port_scanning') }}">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.ip_address.label }}
+                    {{ form.ip_address(class="form-control", placeholder="192.168.1.1") }}
+                     {% for error in form.ip_address.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                     {% endfor %}
+                </div>
+                <div class="mb-3">
+                   {{ form.ports.label }}
+                   {{ form.ports(class="form-control", placeholder="80,443") }}
+                    {% for error in form.ports.errors %}
+                        <span style="color: red;">[{{ error }}]</span>
+                    {% endfor %}
+                </div>
+                <div class="mb-3 form-check">
+                    {{ form.check_now(class="form-check-input") }}
+                    {{ form.check_now.label(class="form-check-label") }}
+                </div>
+                {{ form.submit(class="btn btn-primary") }}
+            </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -115,7 +134,7 @@
         </div>
     </div>
 </div>
-
+<!-- Модальное окно удаления -->
 <div class="modal fade" id="deletePortModal" tabindex="-1" aria-labelledby="deletePortModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -125,20 +144,19 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить сканирование портов для IP <span id="portIpToDelete"></span>?</p>
-                <p class="text-danger">Это действие нельзя отменить.</p>
-            </div>
+               </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                 <form id="deletePortForm" action="{{ url_for('port_scanning') }}" method="post">
+                   {{ form.hidden_tag() }}
                     <input type="hidden" name="ip_address" id="deletePortIp">
                     <input type="hidden" name="delete" value="true">
+                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
-
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {

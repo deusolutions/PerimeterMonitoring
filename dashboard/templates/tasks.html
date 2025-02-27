@@ -12,13 +12,13 @@
                     <i class="fas fa-plus"></i> Добавить задачу
                 </button>
                 <button class="btn btn-{% if scheduler_running %}danger{% else %}success{% endif %} btn-sm" id="toggleScheduler">
-                    <i class="fas fa-{% if scheduler_running %}stop{% else %}play{% endif %}"></i> 
+                    <i class="fas fa-{% if scheduler_running %}stop{% else %}play{% endif %}"></i>
                     {% if scheduler_running %}Остановить{% else %}Запустить{% endif %}
                 </button>
             </div>
         </div>
         <div class="card-body">
-            <p>Состояние планировщика: 
+            <p>Состояние планировщика:
                 <span class="badge {% if scheduler_running %}bg-success{% else %}bg-danger{% endif %}">
                     {% if scheduler_running %}Запущен{% else %}Остановлен{% endif %}
                 </span>
@@ -75,6 +75,7 @@
     </div>
 </div>
 
+<!-- Модальное окно добавления задачи -->
 <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -83,27 +84,31 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addTaskForm" action="{{ url_for('scheduler_tasks') }}" method="post">
+                <form id="addTaskForm"  method="post" action="{{ url_for('scheduler_tasks') }}">
+                     {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="task_name" class="form-label">Название задачи</label>
-                        <input type="text" class="form-control" id="task_name" name="task_name" required>
+                        {{ form.task_name.label }}
+                        {{ form.task_name(class="form-control") }}
+                         {% for error in form.task_name.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                         {% endfor %}
                     </div>
                     <div class="mb-3">
-                        <label for="function" class="form-label">Функция</label>
-                        <select class="form-select" id="function" name="function" required>
-                            <option value="run_ip_scan">Сканирование IP</option>
-                            <option value="check_websites">Проверка веб-сайтов</option>
-                            <option value="check_certificates">Проверка сертификатов</option>
-                            <option value="run_port_scan">Сканирование портов</option>
-                            <option value="check_dns_records">Проверка DNS</option>
-                            <option value="check_security_headers">Проверка заголовков</option>
-                        </select>
+                        {{ form.function.label }}
+                        {{ form.function(class="form-control") }}
+                         {% for error in form.function.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                         {% endfor %}
                     </div>
+
                     <div class="mb-3">
-                        <label for="interval" class="form-label">Интервал (минуты)</label>
-                        <input type="number" class="form-control" id="interval" name="interval" value="60" required>
+                        {{ form.interval.label }}
+                         {{ form.interval(class="form-control") }}
+                          {% for error in form.interval.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                         {% endfor %}
                     </div>
-                    <button type="submit" class="btn btn-primary">Добавить</button>
+                   {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
