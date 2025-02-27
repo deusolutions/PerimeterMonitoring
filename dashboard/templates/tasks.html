@@ -1,29 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}Задачи{% endblock %}
+{% block title %}Задачи планировщика{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0">Управление задачами</h4>
-            <div>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+            <h4 class="mb-0">Задачи планировщика</h4>
+            <div class="d-flex align-items-center">
+                <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addTaskModal">
                     <i class="fas fa-plus"></i> Добавить задачу
                 </button>
-                <button class="btn btn-{% if scheduler_running %}danger{% else %}success{% endif %} btn-sm" id="toggleScheduler">
-                    <i class="fas fa-{% if scheduler_running %}stop{% else %}play{% endif %}"></i>
-                    {% if scheduler_running %}Остановить{% else %}Запустить{% endif %}
-                </button>
+                {% if scheduler_running %}
+                    <button class="btn btn-danger btn-sm" id="stopSchedulerBtn">Остановить планировщик</button>
+                {% else %}
+                    <button class="btn btn-success btn-sm" id="startSchedulerBtn">Запустить планировщик</button>
+                {% endif %}
             </div>
         </div>
         <div class="card-body">
-            <p>Состояние планировщика:
-                <span class="badge {% if scheduler_running %}bg-success{% else %}bg-danger{% endif %}">
-                    {% if scheduler_running %}Запущен{% else %}Остановлен{% endif %}
-                </span>
-            </p>
-            {% if tasks %}
+            {% if tasks.items()|length > 0 %}
                 <div class="table-responsive">
                     <table class="table table-hover table-striped">
                         <thead class="thead-dark">
@@ -42,11 +38,19 @@
                                 <td>{{ task_name }}</td>
                                 <td>{{ task_info.function }}</td>
                                 <td>{{ task_info.interval }} {{ task_info.interval_type }}</td>
-                                <td>{{ task_info.last_run.strftime('%H:%M:%S %d.%m.%Y') if task_info.last_run else 'N/A' }}</td>
                                 <td>
-                                    <span class="badge {% if task_info.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                        {% if task_info.is_active %}Активна{% else %}Приостановлена{% endif %}
-                                    </span>
+                                    {% if task_info.last_run %}
+                                        {{ task_info.last_run | timestamp_to_datetime | datetimeformat('%H:%M:%S %d.%m.%Y') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if task_info.is_active %}
+                                        <span class="badge bg-success">Активна</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Приостановлена</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <div class="dropdown">
@@ -54,9 +58,11 @@
                                             Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#" onclick="controlTask('{{ task_name }}', 'pause')">Приостановить</a></li>
-                                            <li><a class="dropdown-item" href="#" onclick="controlTask('{{ task_name }}', 'resume')">Возобновить</a></li>
-                                            <li><hr class="dropdown-divider"></li>
+                                            {% if task_info.is_active %}
+                                                <li><a class="dropdown-item" href="#" onclick="controlTask('{{ task_name }}', 'pause')">Приостановить</a></li>
+                                            {% else %}
+                                                <li><a class="dropdown-item" href="#" onclick="controlTask('{{ task_name }}', 'resume')">Возобновить</a></li>
+                                            {% endif %}
                                             <li><a class="dropdown-item text-danger" href="#" onclick="controlTask('{{ task_name }}', 'remove')">Удалить</a></li>
                                         </ul>
                                     </div>
@@ -75,7 +81,6 @@
     </div>
 </div>
 
-<!-- Модальное окно добавления задачи -->
 <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -84,31 +89,30 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="addTaskForm"  method="post" action="{{ url_for('scheduler_tasks') }}">
-                     {{ form.hidden_tag() }}
+                <form method="post" action="{{ url_for('scheduler_tasks') }}">
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.task_name.label }}
-                        {{ form.task_name(class="form-control") }}
-                         {% for error in form.task_name.errors %}
+                        {{ form.task_name(class="form-control", placeholder="Название задачи") }}
+                        {% for error in form.task_name.errors %}
                             <span style="color: red;">[{{ error }}]</span>
-                         {% endfor %}
+                        {% endfor %}
                     </div>
                     <div class="mb-3">
                         {{ form.function.label }}
                         {{ form.function(class="form-control") }}
-                         {% for error in form.function.errors %}
+                        {% for error in form.function.errors %}
                             <span style="color: red;">[{{ error }}]</span>
-                         {% endfor %}
+                        {% endfor %}
                     </div>
-
                     <div class="mb-3">
                         {{ form.interval.label }}
-                         {{ form.interval(class="form-control") }}
-                          {% for error in form.interval.errors %}
+                        {{ form.interval(class="form-control", placeholder="Интервал в минутах") }}
+                        {% for error in form.interval.errors %}
                             <span style="color: red;">[{{ error }}]</span>
-                         {% endfor %}
+                        {% endfor %}
                     </div>
-                   {{ form.submit(class="btn btn-primary") }}
+                    {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
@@ -119,47 +123,56 @@
 </div>
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
-    function controlTask(taskName, action) {
-        fetch('/api/tasks/control', {
+    const csrfToken = "{{ csrf_token() }}";
+
+    async function controlTask(taskName, action) {
+        const response = await fetch('/api/tasks/control', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             },
-            body: JSON.stringify({
-                task_name: taskName,
-                action: action
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.error);
-            }
-        })
-        .catch(error => console.error('Ошибка:', error));
+            body: JSON.stringify({ task_name: taskName, action: action })
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка при управлении задачей');
+        }
     }
 
-    document.getElementById('toggleScheduler').addEventListener('click', function() {
-        const action = this.textContent.trim().includes('Остановить') ? 'stop' : 'start';
-        fetch('/api/scheduler/control', {
+    document.getElementById('startSchedulerBtn')?.addEventListener('click', async () => {
+        const response = await fetch('/api/scheduler/control', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             },
-            body: JSON.stringify({ action: action })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + data.error);
-            }
-        })
-        .catch(error => console.error('Ошибка:', error));
+            body: JSON.stringify({ action: 'start' })
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка при запуске планировщика');
+        }
+    });
+
+    document.getElementById('stopSchedulerBtn')?.addEventListener('click', async () => {
+        const response = await fetch('/api/scheduler/control', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ action: 'stop' })
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Ошибка при остановке планировщика');
+        }
     });
 </script>
 {% endblock %}

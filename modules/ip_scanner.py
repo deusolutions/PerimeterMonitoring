@@ -14,28 +14,32 @@ class IPScanner:
         self.notifier = notifier
         self.ip_ranges = config.IP_RANGES
         self.timeout = config.IP_SCAN_TIMEOUT
+        logger.debug(f"IP ranges from config: {self.ip_ranges}")
 
     def _expand_ip_ranges(self) -> List[str]:
         all_ips = []
         for ip_range in self.ip_ranges:
             ip_range = ip_range.strip()
+            logger.debug(f"Processing IP range: {ip_range}")
             try:
                 if "/" in ip_range:
                     network = ipaddress.ip_network(ip_range, strict=False)
                     all_ips.extend([str(ip) for ip in network.hosts()])
                 elif "-" in ip_range:
-                    start_ip, end_ip = ip_range.split("-")
-                    start_ip = ipaddress.IPv4Address(start_ip.strip())
-                    end_ip = ipaddress.IPv4Address(end_ip.strip())
-                    if start_ip > end_ip:
+                    start_ip, end_ip = ip_range.split("-", 1)  # Ограничиваем разделение до первого "-"
+                    start = ipaddress.ip_address(start_ip.strip())
+                    end = ipaddress.ip_address(end_ip.strip())
+                    if start > end:
                         logger.error(f"Некорректный диапазон: {ip_range}. Начальный IP больше конечного.")
                         continue
-                    all_ips.extend([str(ipaddress.IPv4Address(ip)) for ip in range(int(start_ip), int(end_ip) + 1)])
+                    for ip_int in range(int(start), int(end) + 1):
+                        all_ips.append(str(ipaddress.ip_address(ip_int)))
                 else:
                     all_ips.append(ip_range)
             except Exception as e:
                 logger.error(f"Ошибка при обработке диапазона IP {ip_range}: {str(e)}")
         logger.info(f"Всего IP-адресов для сканирования: {len(all_ips)}")
+        logger.debug(f"Expanded IPs: {all_ips[:5]}...")  # Первые 5 для отладки
         return all_ips
 
     def _ping_ip(self, ip: str) -> Dict[str, Any]:
@@ -57,7 +61,7 @@ class IPScanner:
             "is_up": is_up,
             "hostname": hostname,
             "response_time": response_time,
-            "description": None,  # Добавляем поле description
+            "description": None,
             "scan_time": time.time()
         }
 
@@ -81,8 +85,8 @@ class IPScanner:
                 message += f"Предыдущее имя хоста: {old_state['hostname']}"
             self.notifier.send_notification(title, message, priority="normal")
 
-    def scan(self) -> List[Dict[str, Any]]:
-        all_ips = self._expand_ip_ranges()
+    def scan(self, ips: List[str] = None) -> List[Dict[str, Any]]:
+        all_ips = ips if ips is not None else self._expand_ip_ranges()
         logger.info(f"Запуск сканирования {len(all_ips)} IP-адресов")
         changes = []
         for ip in all_ips:

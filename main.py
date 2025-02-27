@@ -1,6 +1,7 @@
 # main.py
 import logging
 from typing import Dict, Any
+import threading
 
 from core.database import Database
 from core.notification import NotificationManager
@@ -11,14 +12,14 @@ from modules.cert_checker import CertificateChecker
 from modules.port_scanner import PortScanner
 from modules.dns_monitor import DNSMonitor
 from modules.security_headers import SecurityHeadersChecker
-import config  # Импорт config для передачи в модули
+import config
 
 logger = logging.getLogger("PerimeterMonitoring")
 
 class PerimeterMonitor:
     def __init__(self, db_manager: Database):
         self.db = db_manager
-        self.notifier = NotificationManager()  # Без db пока
+        self.notifier = NotificationManager()
         self.ip_scanner = IPScanner(self.db, self.notifier)
         self.website_monitor = WebsiteMonitor(self.db, self.notifier)
         self.cert_checker = CertificateChecker(self.db, self.notifier)
@@ -31,21 +32,20 @@ class PerimeterMonitor:
 
     def run(self) -> None:
         logger.info("Запуск системы мониторинга периметра")
-        self.run_full_check()
+        # Запускаем полный цикл проверок в фоновом потоке
+        threading.Thread(target=self.run_full_check, daemon=True).start()
         self.setup_scheduling()
 
     def run_full_check(self) -> None:
         logger.info("Запуск полного цикла проверок")
         changes_detected = False
 
-        # Проверка IP-адресов
         logger.info("Запуск сканирования IP-адресов")
         ip_changes = self.ip_scanner.scan()
         if ip_changes:
             changes_detected = True
         logger.info(f"Сканирование IP-адресов завершено: {len(ip_changes)} изменений обнаружено")
 
-        # Проверка веб-сайтов
         logger.info("Запуск проверки доступности веб-сайтов")
         website_result = self.website_monitor.check_all()
         down_count = website_result["down_count"]
@@ -53,7 +53,6 @@ class PerimeterMonitor:
             changes_detected = True
         logger.info(f"Проверка веб-сайтов завершена: {down_count} сайтов недоступно")
 
-        # Проверка сертификатов
         logger.info("Запуск проверки SSL-сертификатов")
         cert_result = self.cert_checker.check_all()
         expiring_count = len(cert_result.get("expiring", []))
@@ -61,21 +60,18 @@ class PerimeterMonitor:
             changes_detected = True
         logger.info(f"Проверка сертификатов завершена: {expiring_count} сертификатов скоро истекают")
 
-        # Проверка портов
         logger.info("Запуск сканирования портов")
         port_changes = self.port_scanner.scan_all()
         if port_changes:
             changes_detected = True
         logger.info(f"Сканирование портов завершено: {len(port_changes)} изменений обнаружено")
 
-        # Проверка DNS
         logger.info("Запуск проверки DNS-записей")
         dns_changes = self.dns_monitor.check_all()
         if dns_changes:
             changes_detected = True
         logger.info(f"Проверка DNS-записей завершена: {len(dns_changes)} изменений обнаружено")
 
-        # Проверка заголовков безопасности
         logger.info("Запуск проверки заголовков безопасности")
         headers_result = self.headers_checker.check_all()
         issues_count = len(headers_result.get("issues", []))
@@ -124,4 +120,4 @@ class PerimeterMonitor:
         self.headers_checker.check_all()
 
 if __name__ == "__main__":
-    pass  # Запуск теперь происходит из run.py
+    pass

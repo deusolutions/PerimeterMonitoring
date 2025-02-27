@@ -1,34 +1,44 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Детали сайта {{ website_state.url }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="card">
         <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">{{ title }}</h4>
+            <h4 class="mb-0">Детали веб-сайта {{ website_state.url }}</h4>
         </div>
         <div class="card-body">
-            <dl class="row">
-                <dt class="col-sm-3">URL</dt>
-                <dd class="col-sm-9">{{ website_state.url }}</dd>
-                <dt class="col-sm-3">Статус</dt>
-                <dd class="col-sm-9">
-                    {% if website_state.is_up %}
-                        <span class="badge bg-success">Доступен</span>
-                    {% else %}
-                        <span class="badge bg-danger">Недоступен</span>
-                    {% endif %}
-                </dd>
-                <dt class="col-sm-3">Код ответа</dt>
-                <dd class="col-sm-9">{{ website_state.status_code or 'N/A' }}</dd>
-                <dt class="col-sm-3">Время отклика</dt>
-                <dd class="col-sm-9">{{ website_state.response_time or 'N/A' }} мс</dd>
-                <dt class="col-sm-3">Ошибка</dt>
-                <dd class="col-sm-9">{{ website_state.error or 'N/A' }}</dd>
-                <dt class="col-sm-3">Последняя проверка</dt>
-                <dd class="col-sm-9">{{ website_state.check_time.strftime('%H:%M:%S %d.%m.%Y') if website_state.check_time else 'N/A' }}</dd>
-            </dl>
+            {% if website_state %}
+                <dl class="row">
+                    <dt class="col-sm-3">URL:</dt>
+                    <dd class="col-sm-9">{{ website_state.url }}</dd>
+                    <dt class="col-sm-3">Статус:</dt>
+                    <dd class="col-sm-9">
+                        {% if website_state.is_up %}
+                            <span class="badge bg-success">Доступен</span>
+                        {% else %}
+                            <span class="badge bg-danger">Недоступен</span>
+                        {% endif %}
+                    </dd>
+                    <dt class="col-sm-3">Код ответа:</dt>
+                    <dd class="col-sm-9">{{ website_state.status_code or 'N/A' }}</dd>
+                    <dt class="col-sm-3">Время отклика (мс):</dt>
+                    <dd class="col-sm-9">{{ website_state.response_time or 'N/A' }}</dd>
+                    <dt class="col-sm-3">Последняя проверка:</dt>
+                    <dd class="col-sm-9">
+                        {% if website_state.check_time %}
+                            {{ website_state.check_time | datetimeformat('%H:%M:%S %d.%m.%Y') }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </dd>
+                </dl>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    Нет данных для этого веб-сайта
+                </div>
+            {% endif %}
             <a href="{{ url_for('websites') }}" class="btn btn-primary">Назад</a>
         </div>
     </div>

@@ -32,7 +32,7 @@ class PortScanner:
             sock.close()
         except Exception as e:
             logger.error(f"Ошибка сканирования порта {port} на {ip}: {str(e)}")
-        return {"port": port, "state": state}
+        return {"port": port, "state": state, "ip_address": ip, "scan_time": time.time().isoformat()}
 
     def _worker(self, ip: str):
         while not self.queue.empty():
@@ -90,7 +90,6 @@ class PortScanner:
         return changes
 
     def scan_all(self) -> List[Dict[str, Any]]:
-        """Сканирует все IP-адреса из базы с их портами."""
         if not self.enabled:
             logger.info("Сканирование портов отключено")
             return []
@@ -98,7 +97,6 @@ class PortScanner:
         all_changes = []
         all_ports = self.db.get_all_records('port_scanning')
 
-        # Группируем порты по IP
         ip_ports = {}
         for port in all_ports:
             ip = port['ip_address']
@@ -106,9 +104,8 @@ class PortScanner:
                 ip_ports[ip] = []
             ip_ports[ip].append(str(port['port']))
 
-        # Сканируем каждый IP многопоточно
         threads = []
-        results_dict = {}  # Для хранения результатов по IP
+        results_dict = {}
 
         def scan_ip(ip, ports):
             results_dict[ip] = self.scan(ip, ports)
@@ -121,7 +118,6 @@ class PortScanner:
         for t in threads:
             t.join()
 
-        # Собираем все изменения
         for ip, changes in results_dict.items():
             all_changes.extend(changes)
 

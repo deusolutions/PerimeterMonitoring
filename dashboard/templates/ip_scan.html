@@ -62,7 +62,13 @@
                                 </td>
                                 <td>{{ result.hostname or 'N/A' }}</td>
                                 <td>{{ result.description or 'N/A' }}</td>
-                                <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
+                                <td>
+                                    {% if result.scan_time %}
+                                        {{ result.scan_time | datetimeformat('%H:%M:%S %d.%m.%Y') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
