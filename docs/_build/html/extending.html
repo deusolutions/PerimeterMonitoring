@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html lang="ru" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Расширение и доработка &#8212; документация PerimeterMonitoring 1.0.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=e35015f7"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=29b1f277"></script>
+    <link rel="index" title="Алфавитный указатель" href="genindex.html" />
+    <link rel="search" title="Поиск" href="search.html" />
+    <link rel="prev" title="Использование" href="usage.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="extending">
+<span id="id1"></span><h1>Расширение и доработка<a class="headerlink" href="#extending" title="Link to this heading">¶</a></h1>
+<section id="id2">
+<h2>Добавление уведомлений<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<ul>
+<li><p>В <code class="docutils literal notranslate"><span class="pre">core/notification.py</span></code> реализуйте отправку в Telegram/Slack:
+.. code-block:: python</p>
+<blockquote>
+<div><dl class="simple">
+<dt>def send_notification(self, title: str, message: str, priority: str = «normal»):</dt><dd><p>logger.info(f»Уведомление [{priority}]: {title} - {message}»)
+# Добавьте код для Telegram или Slack</p>
+</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="id3">
+<h2>Новые модули мониторинга<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<ol class="arabic simple">
+<li><p>Создайте новый файл в <code class="docutils literal notranslate"><span class="pre">modules/</span></code> (например, <code class="docutils literal notranslate"><span class="pre">new_monitor.py</span></code>).</p></li>
+<li><p>Реализуйте класс с методами <code class="docutils literal notranslate"><span class="pre">check_all</span></code> и уведомлениями.</p></li>
+<li><p>Добавьте его в <code class="docutils literal notranslate"><span class="pre">main.py</span></code> в <code class="docutils literal notranslate"><span class="pre">PerimeterMonitor</span></code>.</p></li>
+</ol>
+</section>
+<section id="id4">
+<h2>Кастомные стили<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Редактируйте <code class="docutils literal notranslate"><span class="pre">static/css/style.css</span></code> для изменения внешнего вида.</p></li>
+</ul>
+</section>
+<section id="id5">
+<h2>Логирование<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Настройте уровень логирования в <code class="docutils literal notranslate"><span class="pre">logging.basicConfig</span></code> (например, <code class="docutils literal notranslate"><span class="pre">DEBUG</span></code>).</p></li>
+</ul>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PerimeterMonitoring</a></h1>
+
+
+
+
+
+
+
+
+<h3>Навигация</h3>
+<p class="caption" role="heading"><span class="caption-text">Содержание:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Общее описание</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Установка и настройка</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Структура проекта</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Основной функционал</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Использование</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Расширение и доработка</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">Добавление уведомлений</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">Новые модули мониторинга</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">Кастомные стили</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">Логирование</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="usage.html" title="предыдущая глава">Использование</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Быстрый поиск</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Искать" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Deus Solutions.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/extending.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -7,37 +7,41 @@
     <div class="card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Мониторинг DNS</h4>
-            <div>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addDNSModal">
+            <div class="d-flex align-items-center">
+                <div class="input-group me-2">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Поиск по домену или значению" 
+                           value="{{ search_query }}" aria-label="Поиск">
+                    <button class="btn btn-outline-light" type="button" onclick="submitSearch()">Поиск</button>
+                </div>
+                <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addDNSModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
-                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
                 <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 250px;">
-                    <form action="{{ url_for('dns_monitoring') }}" method="get">
+                    <form id="filterForm" action="{{ url_for('dns_monitoring') }}" method="get">
                         <div class="mb-3">
                             <label class="form-label">Тип записи:</label>
                             <select name="record_type" class="form-select form-select-sm">
                                 <option value="">Все</option>
-                                <option value="A">A</option>
-                                <option value="AAAA">AAAA</option>
-                                <option value="MX">MX</option>
-                                <option value="NS">NS</option>
-                                <option value="TXT">TXT</option>
+                                <option value="A" {% if record_type_filter == 'A' %}selected{% endif %}>A</option>
+                                <option value="AAAA" {% if record_type_filter == 'AAAA' %}selected{% endif %}>AAAA</option>
+                                <option value="MX" {% if record_type_filter == 'MX' %}selected{% endif %}>MX</option>
+                                <option value="NS" {% if record_type_filter == 'NS' %}selected{% endif %}>NS</option>
+                                <option value="TXT" {% if record_type_filter == 'TXT' %}selected{% endif %}>TXT</option>
                             </select>
                         </div>
+                        <input type="hidden" name="search" id="filterSearch" value="{{ search_query }}">
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
-
             </div>
         </div>
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped">
+                    <table class="table table-hover table-striped" id="dataTable">
                         <thead class="thead-dark">
                             <tr>
                                 <th>Домен</th>
@@ -56,7 +60,7 @@
                                 <td>{{ result.value or 'N/A' }}</td>
                                 <td>{{ result.ttl or 'N/A' }}</td>
                                 <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
-                                 <td style="position: relative;"> <!-- Добавлено position: relative -->
+                                <td>
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -73,16 +77,6 @@
                         </tbody>
                     </table>
                 </div>
-                <!-- Пагинация -->
-                <div class="pagination">
-                    {% if page > 1 %}
-                        <a href="{{ url_for('dns_monitoring', page=page-1, record_type=record_type_filter) }}">Назад</a>
-                    {% endif %}
-                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
-                    {% if page * per_page < total_results %}
-                        <a href="{{ url_for('dns_monitoring', page=page+1, record_type=record_type_filter) }}">Вперед</a>
-                    {% endif %}
-                </div>
             {% else %}
                 <div class="alert alert-info text-center">
                     DNS-записей не найдено
@@ -92,7 +86,6 @@
     </div>
 </div>
 
-<!-- Модальное окно добавления DNS -->
 <div class="modal fade" id="addDNSModal" tabindex="-1" aria-labelledby="addDNSModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -101,20 +94,20 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-               <form method="post" action="{{ url_for('dns_monitoring') }}">
+                <form method="post" action="{{ url_for('dns_monitoring') }}">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.domain.label }}
-                         {{ form.domain(class="form-control", placeholder="example.com") }}
-                          {% for error in form.domain.errors %}
+                        {{ form.domain(class="form-control", placeholder="example.com") }}
+                        {% for error in form.domain.errors %}
                             <span style="color: red;">[{{ error }}]</span>
-                         {% endfor %}
+                        {% endfor %}
                     </div>
                     <div class="mb-3 form-check">
-                       {{ form.check_now(class="form-check-input") }}
-                       {{ form.check_now.label(class="form-check-label") }}
+                        {{ form.check_now(class="form-check-input") }}
+                        {{ form.check_now.label(class="form-check-label") }}
                     </div>
-                     {{ form.submit(class="btn btn-primary") }}
+                    {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
             <div class="modal-footer">
@@ -123,7 +116,7 @@
         </div>
     </div>
 </div>
-<!-- Модальное окно удаления DNS -->
+
 <div class="modal fade" id="deleteDNSModal" tabindex="-1" aria-labelledby="deleteDNSModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -135,7 +128,7 @@
                 <p>Вы уверены, что хотите удалить мониторинг DNS для домена <span id="dnsDomainToDelete"></span>?</p>
             </div>
             <div class="modal-footer">
-                 <form method="post" action="{{ url_for('dns_monitoring') }}">
+                <form method="post" action="{{ url_for('dns_monitoring') }}">
                     {{ form.hidden_tag() }}
                     <input type="hidden" name="domain" id="deleteDNSDomain">
                     <input type="hidden" name="delete" value="true">
@@ -148,18 +141,29 @@
 </div>
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteDNSModal = document.getElementById('deleteDNSModal');
-    if (deleteDNSModal) {
-        deleteDNSModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const domain = button.getAttribute('data-domain');
-            document.getElementById('dnsDomainToDelete').textContent = domain;
-            document.getElementById('deleteDNSDomain').value = domain;
-        });
-    }
-});
+    document.addEventListener('DOMContentLoaded', function() {
+        initSearch('searchInput', 'dataTable', [
+            { column: 0 }, // Домен
+            { column: 2 }  // Значение
+        ]);
+
+        function submitSearch() {
+            const query = document.getElementById('searchInput').value;
+            window.location.href = "{{ url_for('dns_monitoring') }}?search=" + encodeURIComponent(query) + "&record_type=" + document.querySelector('#filterForm select[name=record_type]').value;
+        }
+
+        const deleteDNSModal = document.getElementById('deleteDNSModal');
+        if (deleteDNSModal) {
+            deleteDNSModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const domain = button.getAttribute('data-domain');
+                document.getElementById('dnsDomainToDelete').textContent = domain;
+                document.getElementById('deleteDNSDomain').value = domain;
+            });
+        }
+    });
 </script>
 {% endblock %}
 {% endblock %}

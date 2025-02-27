@@ -7,24 +7,29 @@
     <div class="card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Мониторинг веб-сайтов</h4>
-            <div>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addWebsiteModal">
+            <div class="d-flex align-items-center">
+                <div class="input-group me-2">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Поиск по URL" 
+                           value="{{ search_query }}" aria-label="Поиск">
+                    <button class="btn btn-outline-light" type="button" onclick="submitSearch()">Поиск</button>
+                </div>
+                <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addWebsiteModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
-                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
                 <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 250px;">
-                    <form action="{{ url_for('websites') }}" method="get">
+                    <form id="filterForm" action="{{ url_for('websites') }}" method="get">
                         <div class="mb-3">
                             <label class="form-label">Статус:</label>
                             <select name="status" class="form-select form-select-sm">
                                 <option value="">Все</option>
-                                <option value="up">Доступные</option>
-                                <option value="down">Недоступные</option>
+                                <option value="up" {% if status_filter == 'up' %}selected{% endif %}>Доступные</option>
+                                <option value="down" {% if status_filter == 'down' %}selected{% endif %}>Недоступные</option>
                             </select>
                         </div>
+                        <input type="hidden" name="search" id="filterSearch" value="{{ search_query }}">
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
@@ -33,7 +38,7 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped">
+                    <table class="table table-hover table-striped" id="dataTable">
                         <thead class="thead-dark">
                             <tr>
                                 <th>URL</th>
@@ -58,7 +63,7 @@
                                 <td>{{ result.status_code or 'N/A' }}</td>
                                 <td>{{ result.response_time or 'N/A' }}</td>
                                 <td>{{ result.check_time.strftime('%H:%M:%S %d.%m.%Y') if result.check_time else 'N/A' }}</td>
-                                <td style="position: relative"> <!-- Добавлено position: relative -->
+                                <td>
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -68,7 +73,7 @@
                                             <li><a class="dropdown-item" href="{{ url_for('website_check', url=result.url) }}">Проверить</a></li>
                                             <li><a class="dropdown-item" href="{{ url_for('website_edit', website_id=result.id) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                           <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteWebsiteModal" data-url="{{ result.url }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteWebsiteModal" data-url="{{ result.url }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -76,16 +81,6 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                </div>
-               <!-- Пагинация -->
-                <div class="pagination">
-                    {% if page > 1 %}
-                        <a href="{{ url_for('websites', page=page-1, status=status_filter) }}">Назад</a>
-                    {% endif %}
-                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
-                    {% if page * per_page < total_results %}
-                        <a href="{{ url_for('websites', page=page+1, status=status_filter) }}">Вперед</a>
-                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-info text-center">
@@ -95,7 +90,7 @@
         </div>
     </div>
 </div>
-<!-- Модальное окно добавления сайта -->
+
 <div class="modal fade" id="addWebsiteModal" tabindex="-1" aria-labelledby="addWebsiteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -107,8 +102,8 @@
                 <form method="post" action="{{ url_for('websites') }}">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
-                       {{ form.url.label }}
-                       {{ form.url(class="form-control", placeholder="https://example.com") }}
+                        {{ form.url.label }}
+                        {{ form.url(class="form-control", placeholder="https://example.com") }}
                         {% for error in form.url.errors %}
                             <span style="color: red;">[{{ error }}]</span>
                         {% endfor %}
@@ -127,8 +122,7 @@
     </div>
 </div>
 
-<!-- Модальное окно удаления сайта -->
- <div class="modal fade" id="deleteWebsiteModal" tabindex="-1" aria-labelledby="deleteWebsiteModalLabel" aria-hidden="true">
+<div class="modal fade" id="deleteWebsiteModal" tabindex="-1" aria-labelledby="deleteWebsiteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -140,7 +134,7 @@
             </div>
             <div class="modal-footer">
                 <form id="deleteWebsiteForm" action="{{ url_for('websites') }}" method="post">
-                   {{ form.hidden_tag() }}
+                    {{ form.hidden_tag() }}
                     <input type="hidden" name="url" id="deleteWebsiteUrl">
                     <input type="hidden" name="delete" value="true">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -152,8 +146,18 @@
 </div>
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        initSearch('searchInput', 'dataTable', [
+            { column: 0 } // URL
+        ]);
+
+        function submitSearch() {
+            const query = document.getElementById('searchInput').value;
+            window.location.href = "{{ url_for('websites') }}?search=" + encodeURIComponent(query) + "&status=" + document.querySelector('#filterForm select[name=status]').value;
+        }
+
         const deleteWebsiteModal = document.getElementById('deleteWebsiteModal');
         if (deleteWebsiteModal) {
             deleteWebsiteModal.addEventListener('show.bs.modal', function(event) {

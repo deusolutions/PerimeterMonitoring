@@ -124,17 +124,18 @@ class Scheduler:
             logger.info(f"Задача '{name}' возобновлена")
         return True
 
-    def get_task_info(self, name: str = None) -> Dict[str, Any]:
-        if name is not None:
-            if name not in self._tasks:
-                logger.warning(f"Задача с именем '{name}' не найдена")
-                return {}
-            task_info = self._tasks[name].copy()
-            if 'job' in task_info:
-                del task_info['job']
-            if 'func' in task_info:
-                del task_info['func']
-            return task_info
+    def get_task_info(self) -> Dict[str, Dict[str, Any]]:
+        with self.lock:
+            return {
+                name: {
+                    "function": task["function"].__name__,
+                    "interval": task["interval"],
+                    "interval_type": task["interval_type"],
+                    "last_run": task["last_run"],
+                    "is_active": not task["thread"].daemon or task["thread"].is_alive()
+                }
+                for name, task in self.tasks.items()
+            }
 
         result = {}
         for task_name, task_info in self._tasks.items():

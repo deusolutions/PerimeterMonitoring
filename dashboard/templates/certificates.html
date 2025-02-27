@@ -7,25 +7,30 @@
     <div class="card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Мониторинг SSL/TLS-сертификатов</h4>
-            <div>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addCertModal">
+            <div class="d-flex align-items-center">
+                <div class="input-group me-2">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Поиск по домену" 
+                           value="{{ search_query }}" aria-label="Поиск">
+                    <button class="btn btn-outline-light" type="button" onclick="submitSearch()">Поиск</button>
+                </div>
+                <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addCertModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
-               <!-- Фильтры (оставляем как есть)-->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
                 <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 250px;">
-                    <form action="{{ url_for('certificates') }}" method="get">
+                    <form id="filterForm" action="{{ url_for('certificates') }}" method="get">
                         <div class="mb-3">
                             <label class="form-label">Статус:</label>
                             <select name="status" class="form-select form-select-sm">
                                 <option value="">Все</option>
-                                <option value="valid">Действующие</option>
-                                <option value="expiring_soon">Истекающие</option>
-                                <option value="expired">Истекшие</option>
+                                <option value="valid" {% if status_filter == 'valid' %}selected{% endif %}>Действующие</option>
+                                <option value="expiring_soon" {% if status_filter == 'expiring_soon' %}selected{% endif %}>Истекающие</option>
+                                <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Истекшие</option>
                             </select>
                         </div>
+                        <input type="hidden" name="search" id="filterSearch" value="{{ search_query }}">
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
@@ -34,7 +39,7 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped">
+                    <table class="table table-hover table-striped" id="dataTable">
                         <thead class="thead-dark">
                             <tr>
                                 <th>Домен</th>
@@ -73,7 +78,7 @@
                                         <span class="badge bg-success">Действует</span>
                                     {% endif %}
                                 </td>
-                                 <td style="position: relative;"> <!-- Добавлено position: relative -->
+                                <td>
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -83,7 +88,7 @@
                                             <li><a class="dropdown-item" href="{{ url_for('certificate_check', domain=cert.domain) }}">Проверить</a></li>
                                             <li><a class="dropdown-item" href="{{ url_for('certificate_edit', cert_id=cert.id) }}">Редактировать</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                             <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteCertModal" data-domain="{{ cert.domain }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteCertModal" data-domain="{{ cert.domain }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -91,16 +96,6 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                </div>
-                <!-- Пагинация -->
-                <div class="pagination">
-                    {% if page > 1 %}
-                        <a href="{{ url_for('certificates', page=page-1, status=status_filter) }}">Назад</a>
-                    {% endif %}
-                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
-                    {% if page * per_page < total_results %}
-                        <a href="{{ url_for('certificates', page=page+1, status=status_filter) }}">Вперед</a>
-                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-info text-center">
@@ -110,7 +105,7 @@
         </div>
     </div>
 </div>
-<!-- Модальное окно добавления сертификата -->
+
 <div class="modal fade" id="addCertModal" tabindex="-1" aria-labelledby="addCertModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -119,7 +114,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-               <form method="post" action="{{ url_for('certificates') }}">
+                <form method="post" action="{{ url_for('certificates') }}">
                     {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.domain.label }}
@@ -129,15 +124,15 @@
                         {% endfor %}
                     </div>
                     <div class="mb-3">
-                         {{ form.port.label }}
-                         {{ form.port(class="form-control", placeholder="443") }}
-                          {% for error in form.port.errors %}
+                        {{ form.port.label }}
+                        {{ form.port(class="form-control", placeholder="443") }}
+                        {% for error in form.port.errors %}
                             <span style="color: red;">[{{ error }}]</span>
-                         {% endfor %}
+                        {% endfor %}
                     </div>
                     <div class="mb-3 form-check">
-                       {{ form.check_now(class="form-check-input") }}
-                       {{ form.check_now.label(class="form-check-label") }}
+                        {{ form.check_now(class="form-check-input") }}
+                        {{ form.check_now.label(class="form-check-label") }}
                     </div>
                     {{ form.submit(class="btn btn-primary") }}
                 </form>
@@ -148,7 +143,7 @@
         </div>
     </div>
 </div>
-<!-- Модальное окно удаления сертификата -->
+
 <div class="modal fade" id="deleteCertModal" tabindex="-1" aria-labelledby="deleteCertModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -160,8 +155,8 @@
                 <p>Вы уверены, что хотите удалить сертификат для домена <span id="certDomainToDelete"></span>?</p>
             </div>
             <div class="modal-footer">
-               <form method="post" action="{{ url_for('certificates') }}">
-                    {{ form.hidden_tag() }}  <!-- CSRF -->
+                <form method="post" action="{{ url_for('certificates') }}">
+                    {{ form.hidden_tag() }}
                     <input type="hidden" name="domain" id="deleteCertDomain">
                     <input type="hidden" name="delete" value="true">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -171,9 +166,20 @@
         </div>
     </div>
 </div>
+
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        initSearch('searchInput', 'dataTable', [
+            { column: 0 } // Домен
+        ]);
+
+        function submitSearch() {
+            const query = document.getElementById('searchInput').value;
+            window.location.href = "{{ url_for('certificates') }}?search=" + encodeURIComponent(query) + "&status=" + document.querySelector('#filterForm select[name=status]').value;
+        }
+
         const deleteCertModal = document.getElementById('deleteCertModal');
         if (deleteCertModal) {
             deleteCertModal.addEventListener('show.bs.modal', function(event) {

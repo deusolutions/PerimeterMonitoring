@@ -1,3 +1,4 @@
+# dashboard/app.py
 import logging
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, jsonify, flash
@@ -7,6 +8,7 @@ from core.notification import NotificationManager
 from init import monitor, db_manager
 from dashboard.forms import IPForm, WebsiteForm, CertificateForm, DNSForm, PortScanForm, SecurityHeadersForm, TaskForm
 import config
+import requests
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = config.FLASK_SECRET_KEY
@@ -38,12 +40,26 @@ def index():
     ip_count = len(db_manager.get_all_records("ip_scan_results"))
     website_count = len(db_manager.get_all_records("website_monitoring"))
     cert_count = len(db_manager.get_all_records("ssl_certificates"))
-    alerts_count = 0  # Заменить на реальные данные позже
+    alerts_count = 0
     expiring_certs = cert_checker.check_all().get("expiring", [])
-    return render_template('index.html', scheduler_running=scheduler.is_running(), current_time=datetime.now(),
-                           ip_count=ip_count, website_count=website_count, cert_count=cert_count, 
-                           alerts_count=alerts_count, expiring_certs=expiring_certs)
+    
+    # Получение данных о сервере
+    server_info = {}
+    try:
+        response = requests.get('http://ipinfo.io/json')
+        data = response.json()
+        server_info = {
+            'ip': data.get('ip', 'N/A'),
+            'country': data.get('country', 'N/A'),
+            'org': data.get('org', 'N/A')
+        }
+    except Exception as e:
+        logger.error(f"Ошибка получения данных о сервере: {str(e)}")
+        server_info = {'ip': 'N/A', 'country': 'N/A', 'org': 'N/A'}
 
+    return render_template('index.html', scheduler_running=scheduler.is_running(), current_time=datetime.now(),
+                           ip_count=ip_count, website_count=website_count, cert_count=cert_count,
+                           alerts_count=alerts_count, expiring_certs=expiring_certs, server_info=server_info)
 @app.route('/ip-scan', methods=['GET', 'POST'])
 def ip_scan():
     form = IPForm()
@@ -52,14 +68,9 @@ def ip_scan():
             ip_address = request.form.get('ip_address')
             if db_manager.delete_ip_state(ip_address):
                 flash(f"IP-адрес {ip_address} удален.", "success")
-                return redirect(url_for('ip_scan', page=request.args.get('page', 1, type=int)))
             else:
                 flash(f"Не удалось удалить IP-адрес {ip_address}.", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('ip_scan_results'))
-                return render_template("error.html", title="Ошибка", message=f"Не удалось удалить IP-адрес {ip_address}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('ip_scan'))
         else:
             ip_address = form.ip_address.data
             description = form.description.data
@@ -70,30 +81,23 @@ def ip_scan():
                 if check_now:
                     ip_scanner.scan([ip_address])
                 flash(f"IP-адрес {ip_address} добавлен.", "success")
-                return redirect(url_for('ip_scan', page=request.args.get('page', 1, type=int)))
             except Exception as e:
                 logger.error(f"Ошибка при добавлении IP {ip_address}: {str(e)}")
                 flash(f"Ошибка при добавлении IP-адреса: {str(e)}", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('ip_scan_results'))
-                return render_template("error.html", title="Ошибка", message=f"Ошибка при добавлении IP-адреса: {str(e)}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('ip_scan'))
 
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
+    search_query = request.args.get('search', '').lower()
     status_filter = request.args.get('status')
     all_results = db_manager.get_all_records('ip_scan_results')
+    filtered_results = all_results
+    if search_query:
+        filtered_results = [r for r in filtered_results if search_query in r['ip_address'].lower() or search_query in (r['description'] or '').lower()]
     if status_filter == 'up':
-        filtered_results = [r for r in all_results if r['is_up']]
+        filtered_results = [r for r in filtered_results if r['is_up']]
     elif status_filter == 'down':
-        filtered_results = [r for r in all_results if not r['is_up']]
-    else:
-        filtered_results = all_results
-    total_results = len(filtered_results)
-    results = filtered_results[(page - 1) * per_page: page * per_page]
-    return render_template('ip_scan.html', results=results, current_time=datetime.now(), form=form, page=page,
-                           total_results=total_results, per_page=per_page)
+        filtered_results = [r for r in filtered_results if not r['is_up']]
+    return render_template('ip_scan.html', results=filtered_results, current_time=datetime.now(), form=form, 
+                           search_query=search_query, status_filter=status_filter)
 
 @app.route('/ip-details/<ip_address>')
 def ip_details(ip_address):
@@ -105,11 +109,10 @@ def ip_check(ip_address):
     try:
         ip_scanner.scan([ip_address])
         flash(f"IP-адрес {ip_address} проверен.", "success")
-        return redirect(url_for('ip_scan'))
     except Exception as e:
         logger.error(f"Ошибка при проверке IP {ip_address}: {str(e)}")
         flash(f"Ошибка при проверке IP-адреса: {str(e)}", "danger")
-        return redirect(url_for('ip_scan'))
+    return redirect(url_for('ip_scan'))
 
 @app.route('/ip-edit/<ip_address>', methods=['GET', 'POST'])
 def ip_edit(ip_address):
@@ -140,14 +143,9 @@ def websites():
             url = request.form.get('url')
             if db_manager.delete_website_state(url):
                 flash(f"Веб-сайт {url} удален.", "success")
-                return redirect(url_for('websites', page=request.args.get('page', 1, type=int)))
             else:
                 flash(f"Не удалось удалить веб-сайт {url}.", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('website_monitoring'))
-                return render_template("error.html", title="Ошибка", message=f"Не удалось удалить веб-сайт {url}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('websites'))
         else:
             url = form.url.data
             check_now = form.check_now.data
@@ -157,29 +155,23 @@ def websites():
                 if check_now:
                     website_monitor.check_all([url])
                 flash(f"Веб-сайт {url} добавлен.", "success")
-                return redirect(url_for('websites', page=request.args.get('page', 1, type=int)))
             except Exception as e:
                 logger.error(f"Ошибка при добавлении сайта {url}: {str(e)}")
                 flash(f"Ошибка при добавлении веб-сайта: {str(e)}", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('website_monitoring'))
-                return render_template("error.html", title="Ошибка", message=f"Ошибка при добавлении сайта {url}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
+            return redirect(url_for('websites'))
+
+    search_query = request.args.get('search', '').lower()
     status_filter = request.args.get('status')
     all_results = db_manager.get_all_records('website_monitoring')
+    filtered_results = all_results
+    if search_query:
+        filtered_results = [r for r in filtered_results if search_query in r['url'].lower()]
     if status_filter == 'up':
-        filtered_results = [r for r in all_results if r['is_up']]
+        filtered_results = [r for r in filtered_results if r['is_up']]
     elif status_filter == 'down':
-        filtered_results = [r for r in all_results if not r['is_up']]
-    else:
-        filtered_results = all_results
-    total_results = len(filtered_results)
-    results = filtered_results[(page - 1) * per_page: page * per_page]
-    return render_template('websites.html', results=results, current_time=datetime.now(), form=form, page=page,
-                           total_results=total_results, per_page=per_page)
+        filtered_results = [r for r in filtered_results if not r['is_up']]
+    return render_template('websites.html', results=filtered_results, current_time=datetime.now(), form=form, 
+                           search_query=search_query, status_filter=status_filter)
 
 @app.route('/website-details/<path:url>')
 def website_details(url):
@@ -192,11 +184,10 @@ def website_check(url):
     try:
         website_monitor.check_all([url])
         flash(f"Веб-сайт {url} проверен.", "success")
-        return redirect(url_for('websites'))
     except Exception as e:
         logger.error(f"Ошибка при проверке сайта {url}: {str(e)}")
         flash(f"Ошибка при проверке веб-сайта: {str(e)}", "danger")
-        return redirect(url_for('websites'))
+    return redirect(url_for('websites'))
 
 @app.route('/website-edit/<int:website_id>', methods=['GET', 'POST'])
 def website_edit(website_id):
@@ -229,14 +220,9 @@ def certificates():
             domain = request.form.get('domain')
             if db_manager.delete_cert_info(domain):
                 flash(f"Сертификат для домена {domain} удален.", "success")
-                return redirect(url_for('certificates', page=request.args.get('page', 1, type=int)))
             else:
                 flash(f"Не удалось удалить сертификат для домена {domain}.", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('ssl_certificates'))
-                return render_template("error.html", title="Ошибка", message=f"Не удалось удалить сертификат {domain}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('certificates'))
         else:
             domain = form.domain.data
             port = form.port.data
@@ -259,31 +245,25 @@ def certificates():
                 if check_now:
                     cert_checker.check_all([domain])
                 flash(f"Сертификат для домена {domain} добавлен.", "success")
-                return redirect(url_for('certificates', page=request.args.get('page', 1, type=int)))
             except Exception as e:
                 logger.error(f"Ошибка при добавлении сертификата {domain}: {str(e)}")
                 flash(f"Ошибка при добавлении сертификата: {str(e)}", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('ssl_certificates'))
-                return render_template("error.html", title="Ошибка", message=f"Ошибка при добавлении сертификата: {str(e)}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
+            return redirect(url_for('certificates'))
+
+    search_query = request.args.get('search', '').lower()
     status_filter = request.args.get('status')
     all_results = db_manager.get_all_records('ssl_certificates')
+    filtered_results = all_results
+    if search_query:
+        filtered_results = [r for r in filtered_results if search_query in r['domain'].lower()]
     if status_filter == 'valid':
-        filtered_results = [r for r in all_results if r.get('days_to_expiry', 0) > 0 and not r.get('is_expiring', False)]
+        filtered_results = [r for r in filtered_results if r.get('days_to_expiry', 0) > 0 and not r.get('is_expiring', False)]
     elif status_filter == 'expiring_soon':
-        filtered_results = [r for r in all_results if r.get('is_expiring', False) and r.get('days_to_expiry', 0) > 0]
+        filtered_results = [r for r in filtered_results if r.get('is_expiring', False) and r.get('days_to_expiry', 0) > 0]
     elif status_filter == 'expired':
-        filtered_results = [r for r in all_results if r.get('days_to_expiry', 0) <= 0]
-    else:
-        filtered_results = all_results
-    total_results = len(filtered_results)
-    results = filtered_results[(page - 1) * per_page: page * per_page]
-    return render_template('certificates.html', results=results, current_time=datetime.now(), form=form, page=page,
-                           total_results=total_results, per_page=per_page)
+        filtered_results = [r for r in filtered_results if r.get('days_to_expiry', 0) <= 0]
+    return render_template('certificates.html', results=filtered_results, current_time=datetime.now(), form=form, 
+                           search_query=search_query, status_filter=status_filter)
 
 @app.route('/certificate-details/<domain>')
 def certificate_details(domain):
@@ -296,11 +276,10 @@ def certificate_check(domain):
     try:
         cert_checker.check_all([domain])
         flash(f"Сертификат для домена {domain} проверен.", "success")
-        return redirect(url_for('certificates'))
     except Exception as e:
         logger.error(f"Ошибка при проверке сертификата {domain}: {str(e)}")
         flash(f"Ошибка при проверке сертификата: {str(e)}", "danger")
-        return redirect(url_for('certificates'))
+    return redirect(url_for('certificates'))
 
 @app.route('/certificate-edit/<int:cert_id>', methods=['GET', 'POST'])
 def certificate_edit(cert_id):
@@ -334,14 +313,9 @@ def dns_monitoring():
             domain = request.form.get('domain')
             if db_manager.delete_dns_records(domain):
                 flash(f"DNS-записи для домена {domain} удалены.", "success")
-                return redirect(url_for('dns_monitoring', page=request.args.get('page', 1, type=int)))
             else:
                 flash(f"Не удалось удалить DNS-записи для домена {domain}.", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('dns_monitoring'))
-                return render_template("error.html", title="Ошибка", message=f"Не удалось удалить DNS {domain}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('dns_monitoring'))
         else:
             domain = form.domain.data
             check_now = form.check_now.data
@@ -349,38 +323,31 @@ def dns_monitoring():
                 if check_now:
                     dns_monitor.check_all([domain])
                 flash(f"Мониторинг DNS для домена {domain} добавлен.", "success")
-                return redirect(url_for('dns_monitoring', page=request.args.get('page', 1, type=int)))
             except Exception as e:
                 logger.error(f"Ошибка при добавлении DNS {domain}: {str(e)}")
                 flash(f"Ошибка при добавлении DNS: {str(e)}", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('dns_monitoring'))
-                return render_template("error.html", title="Ошибка", message=f"Ошибка при добавлении DNS {domain}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
+            return redirect(url_for('dns_monitoring'))
+
+    search_query = request.args.get('search', '').lower()
     record_type_filter = request.args.get('record_type')
     all_results = db_manager.get_all_records('dns_monitoring')
+    filtered_results = all_results
+    if search_query:
+        filtered_results = [r for r in filtered_results if search_query in r['domain'].lower() or search_query in r['value'].lower()]
     if record_type_filter:
-        filtered_results = [r for r in all_results if r['record_type'] == record_type_filter]
-    else:
-        filtered_results = all_results
-    total_results = len(filtered_results)
-    results = filtered_results[(page-1) * per_page: page * per_page]
-    return render_template('dns.html', results=results, current_time=datetime.now(), form=form, page=page,
-                           total_results=total_results, per_page=per_page)
+        filtered_results = [r for r in filtered_results if r['record_type'] == record_type_filter]
+    return render_template('dns.html', results=filtered_results, current_time=datetime.now(), form=form, 
+                           search_query=search_query, record_type_filter=record_type_filter)
 
 @app.route('/dns-check/<domain>')
 def dns_check(domain):
     try:
         dns_monitor.check_all([domain])
         flash(f"DNS-записи для домена {domain} проверены.", "success")
-        return redirect(url_for('dns_monitoring'))
     except Exception as e:
         logger.error(f"Ошибка при проверке DNS {domain}: {str(e)}")
         flash(f"Ошибка при проверке DNS: {str(e)}", "danger")
-        return redirect(url_for('dns_monitoring'))
+    return redirect(url_for('dns_monitoring'))
 
 @app.route('/ports', methods=['GET', 'POST'])
 def port_scanning():
@@ -390,14 +357,9 @@ def port_scanning():
             ip_address = request.form.get('ip_address')
             if db_manager.delete_port_state(ip_address):
                 flash(f"Сканирование портов для IP-адреса {ip_address} удалено.", "success")
-                return redirect(url_for('port_scanning', page=request.args.get('page', 1, type=int)))
             else:
                 flash(f"Не удалось удалить сканирование портов для IP-адреса {ip_address}.", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('port_scanning'))
-                return render_template("error.html", title="Ошибка", message=f"Не удалось удалить порты для {ip_address}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('port_scanning'))
         else:
             ip_address = form.ip_address.data
             ports = form.ports.data
@@ -406,29 +368,47 @@ def port_scanning():
                 if check_now:
                     port_scanner.scan(ip_address, ports.split(','))
                 flash(f"Сканирование портов для IP-адреса {ip_address} добавлено.", "success")
-                return redirect(url_for('port_scanning', page=request.args.get('page', 1, type=int)))
             except Exception as e:
                 logger.error(f"Ошибка при добавлении портов для {ip_address}: {str(e)}")
                 flash(f"Ошибка при добавлении портов: {str(e)}", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('port_scanning'))
-                return render_template("error.html", title="Ошибка", message=f"Ошибка при сканировании портов для {ip_address}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
+            return redirect(url_for('port_scanning'))
+
+    search_query = request.args.get('search', '').lower()
     status_filter = request.args.get('status')
     all_results = db_manager.get_all_records('port_scanning')
+    filtered_results = all_results
+    if search_query:
+        filtered_results = [r for r in filtered_results if search_query in r['ip_address'].lower()]
     if status_filter == 'open':
-        filtered_results = [r for r in all_results if r['is_open']]
+        filtered_results = [r for r in filtered_results if r['is_open']]
     elif status_filter == 'closed':
-        filtered_results = [r for r in all_results if not r['is_open']]
-    else:
-        filtered_results = all_results
-    total_results = len(filtered_results)
-    results = filtered_results[(page - 1) * per_page: page * per_page]
-    return render_template('ports.html', results=results, current_time=datetime.now(), form=form, page=page,
-                           total_results=total_results, per_page=per_page)
+        filtered_results = [r for r in filtered_results if not r['is_open']]
+
+    # Группировка портов по IP
+    ip_port_map = {}
+    for result in filtered_results:
+        ip = result['ip_address']
+        if ip not in ip_port_map:
+            ip_port_map[ip] = []
+        ip_port_map[ip].append({
+            'port': result['port'],
+            'protocol': result.get('protocol', 'N/A'),
+            'service': result.get('service', 'N/A'),
+            'is_open': result['is_open'],
+            'scan_time': result.get('scan_time')
+        })
+
+    return render_template('ports.html', ip_ports=ip_port_map, current_time=datetime.now(), form=form, 
+                           search_query=search_query, status_filter=status_filter)
+
+@app.route('/port-details/<ip_address>')
+def port_details(ip_address):
+    all_results = db_manager.get_all_records('port_scanning')
+    ports = [r for r in all_results if r['ip_address'] == ip_address]
+    if not ports:
+        flash(f"Нет данных для IP-адреса {ip_address}.", "danger")
+        return redirect(url_for('port_scanning'))
+    return render_template('port_details.html', ip_address=ip_address, ports=ports, current_time=datetime.now())
 
 @app.route('/port-check/<ip_address>')
 def port_check(ip_address):
@@ -436,11 +416,10 @@ def port_check(ip_address):
         ports = [str(r['port']) for r in db_manager.get_all_records('port_scanning') if r['ip_address'] == ip_address]
         port_scanner.scan(ip_address, ports)
         flash(f"Порты для IP-адреса {ip_address} проверены.", "success")
-        return redirect(url_for('port_scanning'))
     except Exception as e:
         logger.error(f"Ошибка при проверке портов для {ip_address}: {str(e)}")
         flash(f"Ошибка при проверке портов: {str(e)}", "danger")
-        return redirect(url_for('port_scanning'))
+    return redirect(url_for('port_scanning'))
 
 @app.route('/security-headers', methods=['GET', 'POST'])
 def security_headers():
@@ -450,14 +429,9 @@ def security_headers():
             url = request.form.get('url')
             if db_manager.delete_security_headers(url):
                 flash(f"Проверка заголовков для {url} удалена.", "success")
-                return redirect(url_for('security_headers', page=request.args.get('page', 1, type=int)))
             else:
                 flash(f"Не удалось удалить проверку заголовков для {url}.", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('security_headers'))
-                return render_template("error.html", title="Ошибка", message=f"Не удалось удалить заголовки для {url}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
+            return redirect(url_for('security_headers'))
         else:
             url = form.url.data
             check_now = form.check_now.data
@@ -465,33 +439,37 @@ def security_headers():
                 if check_now:
                     headers_checker.check_all([url])
                 flash(f"Проверка заголовков для {url} добавлена.", "success")
-                return redirect(url_for('security_headers', page=request.args.get('page', 1, type=int)))
             except Exception as e:
                 logger.error(f"Ошибка при добавлении заголовков для {url}: {str(e)}")
                 flash(f"Ошибка при добавлении заголовков: {str(e)}", "danger")
-                page = request.args.get('page', 1, type=int)
-                per_page = 10
-                total_results = len(db_manager.get_all_records('security_headers'))
-                return render_template("error.html", title="Ошибка", message=f"Ошибка при проверке заголовков для {url}", 
-                                       page=page, total_results=total_results, per_page=per_page), 500
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
+            return redirect(url_for('security_headers'))
+
+    search_query = request.args.get('search', '').lower()
+    status_filter = request.args.get('status')
     all_results = db_manager.get_all_records('security_headers')
-    total_results = len(all_results)
-    results = all_results[(page - 1) * per_page: page * per_page]
-    return render_template('security_headers.html', results=results, current_time=datetime.now(), form=form,
-                           total_results=total_results, per_page=per_page, page=page)
+    filtered_results = all_results
+    if search_query:
+        filtered_results = [r for r in filtered_results if search_query in r['url'].lower() or search_query in r['header_name'].lower()]
+    if status_filter == 'secure':
+        # "Secure" — все заголовки присутствуют (проверка через критические заголовки из config)
+        critical_headers = config.SECURITY_HEADERS
+        filtered_results = [r for r in filtered_results if all(h in headers_checker._check_headers(r['url'])['headers'] for h in critical_headers)]
+    elif status_filter == 'issues':
+        # "Issues" — отсутствует хотя бы один критический заголовок
+        critical_headers = config.SECURITY_HEADERS
+        filtered_results = [r for r in filtered_results if not all(h in headers_checker._check_headers(r['url'])['headers'] for h in critical_headers)]
+    return render_template('security_headers.html', results=filtered_results, current_time=datetime.now(), form=form, 
+                           search_query=search_query, status_filter=status_filter)
 
 @app.route('/headers-check/<path:url>')
 def headers_check(url):
     try:
         headers_checker.check_all([url])
         flash(f"Заголовки для {url} проверены.", "success")
-        return redirect(url_for('security_headers'))
     except Exception as e:
         logger.error(f"Ошибка при проверке заголовков для {url}: {str(e)}")
         flash(f"Ошибка при проверке заголовков: {str(e)}", "danger")
-        return redirect(url_for('security_headers'))
+    return redirect(url_for('security_headers'))
 
 @app.route('/tasks', methods=['GET', 'POST'])
 def scheduler_tasks():
@@ -504,15 +482,14 @@ def scheduler_tasks():
             function = TASK_FUNCTIONS.get(function_name)
             if not function:
                 flash(f"Неизвестная функция: {function_name}. Доступные: {', '.join(TASK_FUNCTIONS.keys())}", "danger")
-                return redirect(url_for('scheduler_tasks'))
-            scheduler.add_task(task_name, function, interval, 'minutes')
-            flash(f"Задача {task_name} добавлена.", "success")
-            return redirect(url_for('scheduler_tasks'))
+            else:
+                scheduler.add_task(task_name, function, interval, 'minutes')
+                flash(f"Задача {task_name} добавлена.", "success")
         except Exception as e:
             logger.error(f"Ошибка при добавлении задачи {task_name}: {str(e)}")
             flash(f"Ошибка при добавлении задачи: {str(e)}", "danger")
-            return redirect(url_for('scheduler_tasks'))
-    tasks = scheduler.get_task_info()
+        return redirect(url_for('scheduler_tasks'))
+    tasks = scheduler.get_task_info()  # Убедимся, что данные передаются
     return render_template('tasks.html', tasks=tasks, scheduler_running=scheduler.is_running(), 
                            current_time=datetime.now(), form=form)
 
@@ -547,7 +524,7 @@ def control_scheduler():
 
 @app.route('/alerts')
 def alerts():
-    alerts_list = []  # Заменить на реальные данные позже
+    alerts_list = []  # Доработка позже
     return render_template('alerts.html', alerts=alerts_list, current_time=datetime.now())
 
 @app.errorhandler(500)

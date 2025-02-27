@@ -7,24 +7,29 @@
     <div class="card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Сканирование IP-адресов</h4>
-            <div>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addIpModal">
+            <div class="d-flex align-items-center">
+                <div class="input-group me-2">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Поиск по IP или описанию" 
+                           value="{{ search_query }}" aria-label="Поиск">
+                    <button class="btn btn-outline-light" type="button" onclick="submitSearch()">Поиск</button>
+                </div>
+                <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
-                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
-                 <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 250px;">
-                    <form action="{{ url_for('ip_scan') }}" method="get">
+                <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 250px;">
+                    <form id="filterForm" action="{{ url_for('ip_scan') }}" method="get">
                         <div class="mb-3">
                             <label class="form-label">Статус:</label>
                             <select name="status" class="form-select form-select-sm">
                                 <option value="">Все</option>
-                                <option value="up">Доступные</option>
-                                <option value="down">Недоступные</option>
+                                <option value="up" {% if status_filter == 'up' %}selected{% endif %}>Доступные</option>
+                                <option value="down" {% if status_filter == 'down' %}selected{% endif %}>Недоступные</option>
                             </select>
                         </div>
+                        <input type="hidden" name="search" id="filterSearch" value="{{ search_query }}">
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
@@ -33,7 +38,7 @@
         <div class="card-body">
             {% if results %}
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped">
+                    <table class="table table-hover table-striped" id="dataTable">
                         <thead class="thead-dark">
                             <tr>
                                 <th>IP-адрес</th>
@@ -58,7 +63,7 @@
                                 <td>{{ result.hostname or 'N/A' }}</td>
                                 <td>{{ result.description or 'N/A' }}</td>
                                 <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
-                                <td style="position: relative;">  <!-- Добавлено position: relative -->
+                                <td>
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
@@ -77,18 +82,6 @@
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Пагинация -->
-                <div class="pagination">
-                    {% if page > 1 %}
-                        <a href="{{ url_for('ip_scan', page=page-1, status=status_filter) }}">Назад</a>
-                    {% endif %}
-                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
-                    {% if page * per_page < total_results %}
-                        <a href="{{ url_for('ip_scan', page=page+1, status=status_filter) }}">Вперед</a>
-                    {% endif %}
-                </div>
-
             {% else %}
                 <div class="alert alert-info text-center">
                     IP-адресов не найдено
@@ -98,7 +91,6 @@
     </div>
 </div>
 
-<!-- Модальное окно добавления IP -->
 <div class="modal fade" id="addIpModal" tabindex="-1" aria-labelledby="addIpModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -108,34 +100,32 @@
             </div>
             <div class="modal-body">
                 <form method="post" action="{{ url_for('ip_scan') }}">
-                    {{ form.hidden_tag() }}  <!-- CSRF -->
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
                         {{ form.ip_address.label }}
                         {{ form.ip_address(class="form-control", placeholder="192.168.1.1") }}
-                         {% for error in form.ip_address.errors %}
+                        {% for error in form.ip_address.errors %}
                             <span style="color: red;">[{{ error }}]</span>
-                         {% endfor %}
+                        {% endfor %}
                     </div>
                     <div class="mb-3">
                         {{ form.description.label }}
                         {{ form.description(class="form-control", placeholder="Описание") }}
                     </div>
-
                     <div class="mb-3 form-check">
                         {{ form.check_now(class="form-check-input") }}
                         {{ form.check_now.label(class="form-check-label") }}
                     </div>
-
                     {{ form.submit(class="btn btn-primary") }}
                 </form>
             </div>
-             <div class="modal-footer">
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
             </div>
         </div>
     </div>
 </div>
-<!-- Модальное окно удаления IP -->
+
 <div class="modal fade" id="deleteIpModal" tabindex="-1" aria-labelledby="deleteIpModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -148,19 +138,31 @@
             </div>
             <div class="modal-footer">
                 <form method="post" action="{{ url_for('ip_scan') }}">
-                    {{ form.hidden_tag() }} <!-- CSRF -->
+                    {{ form.hidden_tag() }}
                     <input type="hidden" name="ip_address" id="deleteIpAddress">
                     <input type="hidden" name="delete" value="true">
-                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        initSearch('searchInput', 'dataTable', [
+            { column: 0 }, // IP-адрес
+            { column: 3 }  // Описание
+        ]);
+
+        function submitSearch() {
+            const query = document.getElementById('searchInput').value;
+            window.location.href = "{{ url_for('ip_scan') }}?search=" + encodeURIComponent(query) + "&status=" + document.querySelector('#filterForm select[name=status]').value;
+        }
+
         const deleteIpModal = document.getElementById('deleteIpModal');
         if (deleteIpModal) {
             deleteIpModal.addEventListener('show.bs.modal', function(event) {

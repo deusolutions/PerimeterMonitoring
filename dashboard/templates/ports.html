@@ -7,68 +7,60 @@
     <div class="card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Сканирование портов</h4>
-            <div>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPortScanModal">
+            <div class="d-flex align-items-center">
+                <div class="input-group me-2">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Поиск по IP" 
+                           value="{{ search_query }}" aria-label="Поиск">
+                    <button class="btn btn-outline-light" type="button" onclick="submitSearch()">Поиск</button>
+                </div>
+                <button class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addPortScanModal">
                     <i class="fas fa-plus"></i> Добавить
                 </button>
-                <!-- Фильтры (оставляем как есть) -->
                 <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     Фильтры
                 </button>
                 <div class="dropdown-menu p-3" aria-labelledby="filterDropdown" style="width: 250px;">
-                    <form action="{{ url_for('port_scanning') }}" method="get">
+                    <form id="filterForm" action="{{ url_for('port_scanning') }}" method="get">
                         <div class="mb-3">
                             <label class="form-label">Статус:</label>
                             <select name="status" class="form-select form-select-sm">
                                 <option value="">Все</option>
-                                <option value="open">Открытые</option>
-                                <option value="closed">Закрытые</option>
+                                <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Открытые</option>
+                                <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Закрытые</option>
                             </select>
                         </div>
+                        <input type="hidden" name="search" id="filterSearch" value="{{ search_query }}">
                         <button type="submit" class="btn btn-primary btn-sm w-100">Применить</button>
                     </form>
                 </div>
             </div>
         </div>
         <div class="card-body">
-            {% if results %}
+            {% if ip_ports %}
                 <div class="table-responsive">
-                    <table class="table table-hover table-striped">
+                    <table class="table table-hover table-striped" id="dataTable">
                         <thead class="thead-dark">
                             <tr>
                                 <th>IP-адрес</th>
-                                <th>Порт</th>
-                                <th>Протокол</th>
-                                <th>Служба</th>
-                                <th>Статус</th>
-                                <th>Последняя проверка</th>
+                                <th>Количество портов</th>
                                 <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for result in results %}
-                            <tr class="{% if result.is_open %}table-success{% else %}table-secondary{% endif %}">
-                                <td>{{ result.ip_address }}</td>
-                                <td>{{ result.port }}</td>
-                                <td>{{ result.protocol or 'N/A' }}</td>
-                                <td>{{ result.service or 'N/A' }}</td>
+                            {% for ip, ports in ip_ports.items() %}
+                            <tr>
+                                <td>{{ ip }}</td>
+                                <td>{{ ports|length }}</td>
                                 <td>
-                                    {% if result.is_open %}
-                                        <span class="badge bg-success">Открыт</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Закрыт</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ result.scan_time.strftime('%H:%M:%S %d.%m.%Y') if result.scan_time else 'N/A' }}</td>
-                                <td style="position: relative;">  <!-- Добавлено position: relative -->
                                     <div class="dropdown">
                                         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                             Действия
                                         </button>
                                         <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="{{ url_for('port_check', ip_address=result.ip_address) }}">Проверить</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('port_details', ip_address=ip) }}">Детали</a></li>
+                                            <li><a class="dropdown-item" href="{{ url_for('port_check', ip_address=ip) }}">Проверить</a></li>
                                             <li><hr class="dropdown-divider"></li>
-                                           <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deletePortModal" data-ip-address="{{ result.ip_address }}">Удалить</a></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deletePortModal" data-ip-address="{{ ip }}">Удалить</a></li>
                                         </ul>
                                     </div>
                                 </td>
@@ -76,16 +68,6 @@
                             {% endfor %}
                         </tbody>
                     </table>
-                </div>
-                <!-- Пагинация -->
-                <div class="pagination">
-                    {% if page > 1 %}
-                        <a href="{{ url_for('port_scanning', page=page-1, status=status_filter) }}">Назад</a>
-                    {% endif %}
-                    <span>Страница {{ page }} из {{ (total_results + per_page - 1) // per_page }}</span>
-                    {% if page * per_page < total_results %}
-                        <a href="{{ url_for('port_scanning', page=page+1, status=status_filter) }}">Вперед</a>
-                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-info text-center">
@@ -96,7 +78,6 @@
     </div>
 </div>
 
-<!-- Модальное окно добавления сканирования портов -->
 <div class="modal fade" id="addPortScanModal" tabindex="-1" aria-labelledby="addPortScanModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -105,28 +86,28 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              <form method="post" action="{{ url_for('port_scanning') }}">
-                {{ form.hidden_tag() }}
-                <div class="mb-3">
-                    {{ form.ip_address.label }}
-                    {{ form.ip_address(class="form-control", placeholder="192.168.1.1") }}
-                     {% for error in form.ip_address.errors %}
-                        <span style="color: red;">[{{ error }}]</span>
-                     {% endfor %}
-                </div>
-                <div class="mb-3">
-                   {{ form.ports.label }}
-                   {{ form.ports(class="form-control", placeholder="80,443") }}
-                    {% for error in form.ports.errors %}
-                        <span style="color: red;">[{{ error }}]</span>
-                    {% endfor %}
-                </div>
-                <div class="mb-3 form-check">
-                    {{ form.check_now(class="form-check-input") }}
-                    {{ form.check_now.label(class="form-check-label") }}
-                </div>
-                {{ form.submit(class="btn btn-primary") }}
-            </form>
+                <form method="post" action="{{ url_for('port_scanning') }}">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.ip_address.label }}
+                        {{ form.ip_address(class="form-control", placeholder="192.168.1.1") }}
+                        {% for error in form.ip_address.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3">
+                        {{ form.ports.label }}
+                        {{ form.ports(class="form-control", placeholder="80,443") }}
+                        {% for error in form.ports.errors %}
+                            <span style="color: red;">[{{ error }}]</span>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3 form-check">
+                        {{ form.check_now(class="form-check-input") }}
+                        {{ form.check_now.label(class="form-check-label") }}
+                    </div>
+                    {{ form.submit(class="btn btn-primary") }}
+                </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -134,7 +115,7 @@
         </div>
     </div>
 </div>
-<!-- Модальное окно удаления -->
+
 <div class="modal fade" id="deletePortModal" tabindex="-1" aria-labelledby="deletePortModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -144,22 +125,33 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить сканирование портов для IP <span id="portIpToDelete"></span>?</p>
-               </div>
+            </div>
             <div class="modal-footer">
                 <form id="deletePortForm" action="{{ url_for('port_scanning') }}" method="post">
-                   {{ form.hidden_tag() }}
+                    {{ form.hidden_tag() }}
                     <input type="hidden" name="ip_address" id="deletePortIp">
                     <input type="hidden" name="delete" value="true">
-                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-danger">Удалить</button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        initSearch('searchInput', 'dataTable', [
+            { column: 0 } // IP-адрес
+        ]);
+
+        function submitSearch() {
+            const query = document.getElementById('searchInput').value;
+            window.location.href = "{{ url_for('port_scanning') }}?search=" + encodeURIComponent(query) + "&status=" + document.querySelector('#filterForm select[name=status]').value;
+        }
+
         const deletePortModal = document.getElementById('deletePortModal');
         if (deletePortModal) {
             deletePortModal.addEventListener('show.bs.modal', function(event) {

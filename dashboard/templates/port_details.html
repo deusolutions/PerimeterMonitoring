@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Детали портов для {{ ip_address }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Детали портов для {{ ip_address }}</h4>
+        </div>
+        <div class="card-body">
+            {% if ports %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Порт</th>
+                                <th>Протокол</th>
+                                <th>Служба</th>
+                                <th>Статус</th>
+                                <th>Последняя проверка</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for port in ports %}
+                            <tr class="{% if port.is_open %}table-success{% else %}table-secondary{% endif %}">
+                                <td>{{ port.port }}</td>
+                                <td>{{ port.protocol or 'N/A' }}</td>
+                                <td>{{ port.service or 'N/A' }}</td>
+                                <td>
+                                    {% if port.is_open %}
+                                        <span class="badge bg-success">Открыт</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Закрыт</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ port.scan_time.strftime('%H:%M:%S %d.%m.%Y') if port.scan_time else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    Нет данных о портах для этого IP-адреса
+                </div>
+            {% endif %}
+            <a href="{{ url_for('port_scanning') }}" class="btn btn-primary">Назад</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

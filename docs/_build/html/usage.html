@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+
+<html lang="ru" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Использование &#8212; документация PerimeterMonitoring 1.0.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=e35015f7"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=29b1f277"></script>
+    <link rel="index" title="Алфавитный указатель" href="genindex.html" />
+    <link rel="search" title="Поиск" href="search.html" />
+    <link rel="next" title="Расширение и доработка" href="extending.html" />
+    <link rel="prev" title="Основной функционал" href="features.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="usage">
+<span id="id1"></span><h1>Использование<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h1>
+<ol class="arabic simple">
+<li><p><strong>Запуск системы</strong>:
+После выполнения <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">run.py</span></code> открой <code class="docutils literal notranslate"><span class="pre">http://localhost:5000</span></code> в браузере.</p></li>
+<li><p><strong>Главная страница</strong>:
+- Обзор количества IP, сайтов, сертификатов и истекающих сертификатов.</p></li>
+<li><p><strong>Добавление объектов</strong>:
+- Перейдите в нужный раздел (например, «IP-сканирование»).
+- Нажмите «Добавить», заполните форму (например, IP-адрес и описание).
+- Укажите «Проверить сейчас» для немедленной проверки.</p></li>
+<li><p><strong>Просмотр и управление</strong>:
+- Используйте таблицы для просмотра текущего состояния.
+- Фильтры (например, «Доступные»/»Недоступные») и пагинация для навигации.
+- Кнопка «Действия» в каждой строке: «Детали», «Проверить», «Редактировать», «Удалить».</p></li>
+<li><p><strong>Планировщик</strong>:
+- Перейдите в «Задачи».
+- Добавьте задачу (например, <code class="docutils literal notranslate"><span class="pre">run_ip_scan</span></code> с интервалом 5 минут).
+- Управляйте задачами (остановка, возобновление, удаление).</p></li>
+<li><p><strong>Уведомления</strong>:
+- Пока выводятся в логи (<code class="docutils literal notranslate"><span class="pre">INFO</span></code>).
+- Расширьте <code class="docutils literal notranslate"><span class="pre">NotificationManager</span></code> для Telegram/Slack по необходимости.</p></li>
+</ol>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">PerimeterMonitoring</a></h1>
+
+
+
+
+
+
+
+
+<h3>Навигация</h3>
+<p class="caption" role="heading"><span class="caption-text">Содержание:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Общее описание</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Установка и настройка</a></li>
+<li class="toctree-l1"><a class="reference internal" href="structure.html">Структура проекта</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Основной функционал</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Использование</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extending.html">Расширение и доработка</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="features.html" title="предыдущая глава">Основной функционал</a></li>
+      <li>Next: <a href="extending.html" title="следующая глава">Расширение и доработка</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Быстрый поиск</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Искать" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Deus Solutions.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.2.6</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/usage.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

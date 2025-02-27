@@ -14,13 +14,25 @@
                     <p><strong>IP-адресов в мониторинге:</strong> {{ ip_count }}</p>
                     <p><strong>Веб-сайтов в мониторинге:</strong> {{ website_count }}</p>
                     <p><strong>Сертификатов в мониторинге:</strong> {{ cert_count }}</p>
-                    <p><strong>Активных инцидентов:</strong> {{ alerts_count }}</p> <!--  Замени на реальные данные -->
+                    <p><strong>Активных инцидентов:</strong> {{ alerts_count }}</p>
                     <p><strong>Истекающих сертификатов:</strong> {{ expiring_certs|length }}</p>
                     <p><strong>Текущее время:</strong> {{ current_time.strftime('%H:%M:%S %d.%m.%Y') }}</p>
                 </div>
             </div>
         </div>
-         <div class="col-md-6">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Информация о сервере</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>IP сервера:</strong> {{ server_info.ip }}</p>
+                    <p><strong>Страна:</strong> {{ server_info.country }}</p>
+                    <p><strong>Провайдер:</strong> {{ server_info.org }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-warning text-white">
                     <h4 class="mb-0">Истекающие сертификаты</h4>

@@ -53,22 +53,22 @@ class IPScanner:
             try:
                 if "/" in ip_range:
                     network = ipaddress.ip_network(ip_range, strict=False)
-                    all_ips.extend([str(ip) for ip in network.hosts()])  # Добавляем только хосты
+                    all_ips.extend([str(ip) for ip in network.hosts()])
                 elif "-" in ip_range:
                     start_ip, end_ip = ip_range.split("-")
                     start_ip = ipaddress.IPv4Address(start_ip.strip())
                     end_ip = ipaddress.IPv4Address(end_ip.strip())
-
-                    # Проверка на корректный диапазон
                     if start_ip > end_ip:
                         logger.error(f"Некорректный диапазон: {ip_range}. Начальный IP больше конечного.")
                         continue
-
-                    all_ips.extend([str(ipaddress.IPv4Address(ip)) for ip in range(int(start_ip), int(end_ip) + 1)])
+                    ips = [str(ipaddress.IPv4Address(ip)) for ip in range(int(start_ip), int(end_ip) + 1)]
+                    all_ips.extend(ips)
+                    logger.info(f"Расширен диапазон {ip_range}: {len(ips)} IP-адресов")
                 else:
-                    all_ips.append(ip_range)  # Добавляем как есть
+                    all_ips.append(ip_range)
             except Exception as e:
                 logger.error(f"Ошибка при обработке диапазона IP {ip_range}: {str(e)}")
+        logger.info(f"Всего IP-адресов для сканирования: {len(all_ips)}")
         return all_ips
 
 

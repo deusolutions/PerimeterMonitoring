@@ -502,7 +502,8 @@ class Database:
             cursor.close()
 
 
-    def get_all_records(self, table_name: str, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+# core/database.py
+    def get_all_records(self, table_name: str, limit: int = None, offset: int = 0) -> List[Dict[str, Any]]:
         cursor = self.connection.cursor()
         try:
             valid_tables = {
@@ -517,10 +518,13 @@ class Database:
                 raise ValueError(f"Недопустимое имя таблицы: {table_name}")
             actual_table = valid_tables[table_name]
 
-            cursor.execute(f'''
-                SELECT * FROM {actual_table}
-                LIMIT ? OFFSET ?
-            ''', (limit, offset))
+            query = f'SELECT * FROM {actual_table}'
+            params = []
+            if limit is not None:
+                query += ' LIMIT ? OFFSET ?'
+                params = [limit, offset]
+
+            cursor.execute(query, params)
             rows = cursor.fetchall()
             result = []
             for row in rows:
@@ -533,14 +537,6 @@ class Database:
                             pass
                 result.append(data)
             return result
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.error(f"Таблица {actual_table} не существует.")
-                return []
-            else:
-                logger.error(f"Ошибка при получении записей из таблицы {table_name}: {str(e)}")
-                return []
-
         except Exception as e:
             logger.error(f"Ошибка при получении записей из таблицы {table_name}: {str(e)}")
             return []
