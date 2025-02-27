@@ -1,50 +1,19 @@
-import logging
-import socket
-import subprocess
-import platform
+# modules/ip_scanner.py
 import ipaddress
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-
+import logging
+from typing import List, Dict, Any
+import time
+import socket
 import config
-from core.database import Database
-from core.notification import NotificationManager
 
 logger = logging.getLogger("IPScanner")
 
 class IPScanner:
-    def __init__(self, db: Database, notifier: NotificationManager):
+    def __init__(self, db, notifier):
         self.db = db
         self.notifier = notifier
-        self.timeout = config.IP_SCAN_TIMEOUT
         self.ip_ranges = config.IP_RANGES
-
-    def _ping(self, ip_address: str) -> bool:
-        param = '-n' if platform.system().lower() == 'windows' else '-c'
-        command = ['ping', param, '1', '-W', str(self.timeout), ip_address]
-        try:
-            return subprocess.call(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
-        except Exception as e:
-            logger.error(f"Ошибка при выполнении ping до {ip_address}: {str(e)}")
-            return False
-
-    def _get_hostname(self, ip_address: str) -> str:
-        try:
-            return socket.getfqdn(ip_address)
-        except Exception as e:
-            logger.debug(f"Невозможно получить имя хоста для {ip_address}: {str(e)}")
-            return ""
-
-    def _scan_single_ip(self, ip_address: str) -> Dict[str, Any]:
-        is_up = self._ping(ip_address)
-        hostname = self._get_hostname(ip_address) if is_up else ""
-        return {
-            "ip_address": ip_address,
-            "is_up": is_up,
-            "hostname": hostname,
-            "scan_time": datetime.now(),
-            "description": ""  # Добавляем по умолчанию
-        }
+        self.timeout = config.IP_SCAN_TIMEOUT
 
     def _expand_ip_ranges(self) -> List[str]:
         all_ips = []
@@ -61,9 +30,7 @@ class IPScanner:
                     if start_ip > end_ip:
                         logger.error(f"Некорректный диапазон: {ip_range}. Начальный IP больше конечного.")
                         continue
-                    ips = [str(ipaddress.IPv4Address(ip)) for ip in range(int(start_ip), int(end_ip) + 1)]
-                    all_ips.extend(ips)
-                    logger.info(f"Расширен диапазон {ip_range}: {len(ips)} IP-адресов")
+                    all_ips.extend([str(ipaddress.IPv4Address(ip)) for ip in range(int(start_ip), int(end_ip) + 1)])
                 else:
                     all_ips.append(ip_range)
             except Exception as e:
@@ -71,44 +38,37 @@ class IPScanner:
         logger.info(f"Всего IP-адресов для сканирования: {len(all_ips)}")
         return all_ips
 
+    def _ping_ip(self, ip: str) -> Dict[str, Any]:
+        try:
+            start_time = time.time()
+            socket.setdefaulttimeout(self.timeout)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            result = sock.connect_ex((ip, 80))  # Проверка порта 80 как индикатор доступности
+            sock.close()
+            is_up = result == 0
+            hostname = socket.gethostbyaddr(ip)[0] if is_up else None
+            response_time = (time.time() - start_time) * 1000 if is_up else None  # В миллисекундах
+        except (socket.timeout, socket.error, socket.herror):
+            is_up = False
+            hostname = None
+            response_time = None
+        return {
+            "ip_address": ip,
+            "is_up": is_up,
+            "hostname": hostname,
+            "response_time": response_time,
+            "description": None,  # Добавляем поле description
+            "scan_time": time.time()
+        }
 
-    def scan(self, ip_list: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-        if ip_list is None:
-            ip_addresses = self._expand_ip_ranges()
-        else:
-            ip_addresses = ip_list
-        results = []
-        changes = []
-        logger.info(f"Запуск сканирования {len(ip_addresses)} IP-адресов")
-        for ip in ip_addresses:
-            try:
-                scan_result = self._scan_single_ip(ip)
-                results.append(scan_result)
-                previous_state = self.db.get_ip_state(ip)
-                if previous_state is None:
-                    self.db.save_ip_state(scan_result)
-                    continue
-                if (previous_state["is_up"] != scan_result["is_up"] or
-                        previous_state["hostname"] != scan_result["hostname"]):
-                    change = {
-                        "ip_address": ip,
-                        "old_state": previous_state,
-                        "new_state": scan_result,
-                        "change_time": datetime.now()
-                    }
-                    changes.append(change)
-                    self.db.save_ip_change(change)
-                    self.db.save_ip_state(scan_result)
-                    self._notify_change(change)
-            except Exception as e:
-                logger.error(f"Ошибка при сканировании IP {ip}: {str(e)}")
-        logger.info(f"Сканирование завершено. Обнаружено {len(changes)} изменений.")
-        return changes
+    def _detect_change(self, previous: Dict[str, Any], current: Dict[str, Any]) -> bool:
+        return (previous.get("is_up") != current["is_up"] or 
+                previous.get("hostname") != current["hostname"])
 
     def _notify_change(self, change: Dict[str, Any]) -> None:
         ip = change["ip_address"]
-        old_state = change["old_state"]
-        new_state = change["new_state"]
+        old_state = self.db.get_ip_state(ip) or {"is_up": False, "hostname": None}
+        new_state = {"is_up": change["is_up"], "hostname": change["hostname"]}
         if old_state["is_up"] != new_state["is_up"]:
             if new_state["is_up"]:
                 title = f"🟢 IP {ip} стал доступен"
@@ -119,11 +79,21 @@ class IPScanner:
                 title = f"🔴 IP {ip} стал недоступен"
                 message = f"IP-адрес {ip} перестал отвечать на пинги.\n"
                 message += f"Предыдущее имя хоста: {old_state['hostname']}"
-        elif old_state["hostname"] != new_state["hostname"]:
-            title = f"ℹ️ Изменение имени хоста для IP {ip}"
-            message = f"Для IP-адреса {ip} изменилось имя хоста.\n"
-            message += f"Старое имя: {old_state['hostname']}\n"
-            message += f"Новое имя: {new_state['hostname']}"
-        else:
-            return
-        self.notifier.send_notification(title, message)
+            self.notifier.send_notification(title, message, priority="normal")
+
+    def scan(self) -> List[Dict[str, Any]]:
+        all_ips = self._expand_ip_ranges()
+        logger.info(f"Запуск сканирования {len(all_ips)} IP-адресов")
+        changes = []
+        for ip in all_ips:
+            current_state = self._ping_ip(ip)
+            previous_state = self.db.get_ip_state(ip)
+            if previous_state and self._detect_change(previous_state, current_state):
+                changes.append({"ip_address": ip, "old_state": previous_state, "new_state": current_state})
+                self._notify_change(current_state)
+            try:
+                self.db.save_ip_state(current_state)
+            except Exception as e:
+                logger.error(f"Ошибка при сохранении изменения IP {ip}: {str(e)}")
+        logger.info(f"Сканирование завершено. Обнаружено {len(changes)} изменений.")
+        return changes

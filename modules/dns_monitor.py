@@ -1,83 +1,79 @@
-import logging
-from datetime import datetime
-from typing import Dict, List, Any, Optional
-
+# modules/dns_monitor.py
 import dns.resolver
-from core.database import Database
-from core.notification import NotificationManager
+import logging
+from typing import List, Dict, Any
 import time
 import config
 
-logger = logging.getLogger("DNSMonitor")
+logger = logging.getLogger(__name__)
 
 class DNSMonitor:
-    def __init__(self, db: Database, notifier: NotificationManager, config):
+    def __init__(self, db, notifier, config_obj):
         self.db = db
         self.notifier = notifier
         self.enabled = config.DNS_MONITOR_ENABLED
         self.timeout = config.DNS_TIMEOUT
-        try:
-            self.record_types = config.DNS_RECORD_TYPES
-        except AttributeError:
-            logger.error("Ошибка при загрузке типов DNS-записей")
-            self.record_types = ['A', 'AAAA', 'MX', 'NS']  # Значения по умолчанию
-        self.nameservers = config.DNS_NAMESERVERS if config.DNS_NAMESERVERS else None
-        self.resolver = dns.resolver.Resolver()
-        if self.nameservers:
-            self.resolver.nameservers = self.nameservers
+        self.record_types = config.DNS_RECORD_TYPES
+        self.nameservers = config.DNS_NAMESERVERS or None
 
-    def check_all(self, domains: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def _check_dns(self, domain: str) -> List[Dict[str, Any]]:
         if not self.enabled:
             logger.info("Мониторинг DNS отключен")
             return []
-        if domains is None:
-            websites = config.WEBSITES
-            domains = [url.split('://')[-1].split('/')[0] for url in websites]
+        logger.info(f"Мониторинг DNS-записей для {domain}")
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = self.timeout
+        resolver.lifetime = self.timeout
+        if self.nameservers:
+            resolver.nameservers = self.nameservers
+        records = []
+        try:
+            for rtype in self.record_types:
+                try:
+                    answers = resolver.resolve(domain, rtype)
+                    for rdata in answers:
+                        records.append({
+                            "domain": domain,
+                            "record_type": rtype,
+                            "value": str(rdata),
+                            "ttl": rdata.ttl if hasattr(rdata, 'ttl') else 0,
+                            "check_time": time.time()
+                        })
+                except dns.resolver.NoAnswer:
+                    continue
+                except Exception as e:
+                    logger.error(f"Ошибка при проверке {rtype} для {domain}: {str(e)}")
+            return records
+        except Exception as e:
+            logger.error(f"Ошибка при проверке DNS для {domain}: {str(e)}")
+            return []
+
+    def _detect_change(self, previous: List[Dict[str, Any]], current: List[Dict[str, Any]]) -> bool:
+        prev_dict = {(r["record_type"], r["value"]) for r in previous}
+        curr_dict = {(r["record_type"], r["value"]) for r in current}
+        return prev_dict != curr_dict
+
+    def _notify_change(self, domain: str, changes: List[Dict[str, Any]]) -> None:
+        title = f"ℹ️ Изменение DNS-записей для {domain}"
+        message = f"Обнаружены изменения в DNS для {domain}:\n"
+        for change in changes:
+            message += f"{change['record_type']}: {change['value']} (TTL: {change['ttl']})\n"
+        self.notifier.send_notification(title, message, priority="high")
+
+    def check_all(self, domains: List[str] = None) -> List[Dict[str, Any]]:
+        domains = domains or [r["domain"] for r in self.db.get_all_records("dns_monitoring")]
         changes = []
         for domain in domains:
-            logger.info(f"Мониторинг DNS-записей для {domain}")
-            try:
-                dns_data = self._check_dns(domain)
-                previous = self.db.get_last_dns_scan(domain)
-                if previous and self._detect_changes(previous, dns_data):
-                    changes.append(dns_data)
-                    self._notify_change(domain, previous["records"], dns_data["records"])
-                self.db.save_dns_scan(dns_data)
-                if changes:
-                    logger.info(f"Обнаружены изменения в DNS для {domain}: {len(changes)} изменений")
-                else:
-                    logger.info(f"Изменений в DNS для {domain} не обнаружено")
-            except Exception as e:
-                logger.error(f"Ошибка при проверке DNS для {domain}: {str(e)}")
+            current_records = self._check_dns(domain)
+            previous_records = self.db.get_dns_records(domain)  # Заменили get_last_dns_scan
+            if previous_records and self._detect_change(previous_records, current_records):
+                changes.append({"domain": domain, "records": current_records})
+                self._notify_change(domain, current_records)
+            for record in current_records:
+                try:
+                    self.db.save_dns_record(record)
+                except Exception as e:
+                    logger.error(f"Ошибка при сохранении DNS для {domain}: {str(e)}")
+            if not current_records:
+                logger.info(f"Изменений в DNS для {domain} не обнаружено")
         return changes
-
-    def _check_dns(self, domain: str) -> Dict[str, Any]:
-        records = {}
-        for rtype in self.record_types:
-            try:
-                answers = self.resolver.resolve(domain, rtype, lifetime=self.timeout)
-                records[rtype] = [str(rdata) for rdata in answers]
-            except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.Timeout):
-                records[rtype] = []
-            except Exception as e:
-                logger.debug(f"Ошибка при запросе {rtype} для {domain}: {str(e)}")
-                records[rtype] = []
-        return {
-            "domain": domain,
-            "records": records,
-            "ttl": 0,  # TTL можно добавить через answers.rrset.ttl, если нужно
-            "timestamp": time.time()
-        }
-
-    def _detect_changes(self, previous: Dict[str, Any], current: Dict[str, Any]) -> bool:
-        return previous["records"] != current["records"]
-
-    def _notify_change(self, domain: str, old_records: Dict[str, List[str]], new_records: Dict[str, List[str]]) -> None:
-        title = f"ℹ️ Изменения в DNS для {domain}"
-        message = f"Обнаружены изменения в DNS-записях для {domain}:\n"
-        for rtype in set(old_records.keys()) | set(new_records.keys()):
-            old = old_records.get(rtype, [])
-            new = new_records.get(rtype, [])
-            if old != new:
-                message += f"{rtype}: было {old}, стало {new}\n"
-        self.notifier.send_notification(title, message)

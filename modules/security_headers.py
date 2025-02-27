@@ -1,84 +1,72 @@
+# modules/security_headers.py
 import logging
 import requests
-from datetime import datetime
-from typing import Dict, List, Any, Optional
-
-from core.database import Database
-from core.notification import NotificationManager
-import config
+from typing import List, Dict, Any
 import time
+import config
 
 logger = logging.getLogger("SecurityHeaders")
 
 class SecurityHeadersChecker:
-    def __init__(self, db: Database, notifier: NotificationManager, config):
+    def __init__(self, db, notifier, config_obj):
         self.db = db
         self.notifier = notifier
         self.enabled = config.SECURITY_HEADERS_CHECK_ENABLED
-        try:
-            self.critical_headers = config.SECURITY_HEADERS
-        except AttributeError:
-            logger.error("Ошибка при загрузке критических заголовков")
-            self.critical_headers = ['Strict-Transport-Security', 'X-XSS-Protection']
+        self.headers = config.SECURITY_HEADERS
         self.timeout = config.SECURITY_HEADERS_TIMEOUT
         self.user_agent = config.SECURITY_HEADERS_USER_AGENT
         self.verify_ssl = config.SECURITY_HEADERS_VERIFY_SSL
 
-    def check_all(self, urls: Optional[List[str]] = None) -> Dict[str, Any]:
+    def _check_headers(self, url: str) -> Dict[str, Any]:
         if not self.enabled:
             logger.info("Проверка заголовков безопасности отключена")
-            return {"results": [], "issues": [], "changes": []}
-        if urls is None:
-            urls = config.WEBSITES
-        results = []
+            return {"url": url, "headers": {}, "issues": [], "check_time": time.time()}
+        logger.info(f"Проверка заголовков безопасности для {url}")
+        headers_info = {"url": url, "headers": {}, "issues": [], "check_time": time.time()}
+        try:
+            response = requests.get(
+                url,
+                timeout=self.timeout,
+                headers={"User-Agent": self.user_agent},
+                verify=self.verify_ssl
+            )
+            headers_info["headers"] = dict(response.headers)
+            missing_headers = [h for h in self.headers if h not in response.headers]
+            if missing_headers:
+                headers_info["issues"] = missing_headers
+                self.notifier.send_notification(
+                    f"⚠️ Отсутствуют заголовки безопасности для {url}",
+                    f"Для {url} отсутствуют критические заголовки: {', '.join(missing_headers)}",
+                    priority="medium"
+                )
+        except Exception as e:
+            logger.error(f"Ошибка при проверке заголовков для {url}: {str(e)}")
+            headers_info["error"] = str(e)
+        return headers_info
+
+    def check_all(self, urls: List[str] = None) -> Dict[str, Any]:
+        urls = urls or [r["url"] for r in self.db.get_all_records("security_headers")]
+        logger.info(f"Проверка заголовков для {len(urls)} URL")
         issues = []
-        changes = []
+        changes = False
         for url in urls:
-            logger.info(f"Проверка заголовков безопасности для {url}")
-            try:
-                headers_data = self._check_headers(url)
-                results.append(headers_data)
-                previous = self.db.get_last_security_headers_check(url)
-                if previous and self._detect_changes(previous, headers_data):
-                    changes.append(headers_data)
-                    self._notify_change(url, previous["headers"], headers_data["headers"])
-                self.db.save_security_headers_check(headers_data)
-                missing_headers = self._check_missing_headers(headers_data["headers"])
-                if missing_headers:
-                    issues.append({"url": url, "missing_headers": missing_headers})
-                    self._notify_missing_headers(url, missing_headers)
-            except Exception as e:
-                logger.error(f"Ошибка при проверке заголовков для {url}: {str(e)}")
-        return {"results": results, "issues": issues, "changes": changes}
-
-    def _check_headers(self, url: str) -> Dict[str, Any]:
-        headers = {
-            "User-Agent": self.user_agent
-        }
-        response = requests.get(url, headers=headers, timeout=self.timeout, verify=self.verify_ssl)
-        return {
-            "url": url,
-            "headers": dict(response.headers),
-            "timestamp": time.time()
-        }
-
-    def _detect_changes(self, previous: Dict[str, Any], current: Dict[str, Any]) -> bool:
-        return previous["headers"] != current["headers"]
-
-    def _check_missing_headers(self, headers: Dict[str, str]) -> List[str]:
-        return [h for h in self.critical_headers if h not in headers]
-
-    def _notify_change(self, url: str, old_headers: Dict[str, str], new_headers: Dict[str, str]) -> None:
-        title = f"ℹ️ Изменения в заголовках безопасности для {url}"
-        message = f"Обнаружены изменения в заголовках для {url}:\n"
-        for header in set(old_headers.keys()) | set(new_headers.keys()):
-            old = old_headers.get(header, "отсутствует")
-            new = new_headers.get(header, "отсутствует")
-            if old != new:
-                message += f"{header}: было '{old}', стало '{new}'\n"
-        self.notifier.send_notification(title, message)
-
-    def _notify_missing_headers(self, url: str, missing: List[str]) -> None:
-        title = f"⚠️ Отсутствуют заголовки безопасности для {url}"
-        message = f"Для {url} отсутствуют критические заголовки: {', '.join(missing)}"
-        self.notifier.send_notification(title, message, priority="medium")
+            current_headers = self._check_headers(url)
+            previous_headers = self.db.get_security_headers(url)  # Заменили get_last_security_headers_check
+            prev_dict = {h["header_name"]: h["header_value"] for h in previous_headers}
+            curr_dict = current_headers["headers"]
+            if prev_dict != curr_dict:
+                changes = True
+            if current_headers.get("issues"):
+                issues.extend(current_headers["issues"])
+            for header_name, header_value in current_headers["headers"].items():
+                try:
+                    self.db.save_security_headers({
+                        "url": url,
+                        "header_name": header_name,
+                        "header_value": header_value,
+                        "check_time": current_headers["check_time"]
+                    })
+                except Exception as e:
+                    logger.error(f"Ошибка при сохранении заголовков для {url}: {str(e)}")
+        logger.info(f"Проверка заголовков безопасности завершена: {len(issues)} проблем обнаружено")
+        return {"issues": issues, "changes": changes}

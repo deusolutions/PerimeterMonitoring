@@ -18,14 +18,14 @@ logger = logging.getLogger("PerimeterMonitoring")
 class PerimeterMonitor:
     def __init__(self, db_manager: Database):
         self.db = db_manager
-        self.notifier = NotificationManager()
+        self.notifier = NotificationManager()  # Без db пока
         self.ip_scanner = IPScanner(self.db, self.notifier)
         self.website_monitor = WebsiteMonitor(self.db, self.notifier)
         self.cert_checker = CertificateChecker(self.db, self.notifier)
-        self.port_scanner = PortScanner(self.db, self.notifier, config)  # Передаем config
-        self.dns_monitor = DNSMonitor(self.db, self.notifier, config)    # Передаем config
-        self.headers_checker = SecurityHeadersChecker(self.db, self.notifier, config)  # Передаем config
-        self.scheduler = Scheduler()  # Исправлено: убрали self
+        self.port_scanner = PortScanner(self.db, self.notifier, config)
+        self.dns_monitor = DNSMonitor(self.db, self.notifier, config)
+        self.headers_checker = SecurityHeadersChecker(self.db, self.notifier, config)
+        self.scheduler = Scheduler()
         logger.info("Инициализация системы мониторинга периметра")
         logger.info("Система мониторинга инициализирована")
 
@@ -49,12 +49,16 @@ class PerimeterMonitor:
         logger.info("Запуск проверки доступности веб-сайтов")
         website_result = self.website_monitor.check_all()
         down_count = website_result["down_count"]
+        if website_result.get("changes"):
+            changes_detected = True
         logger.info(f"Проверка веб-сайтов завершена: {down_count} сайтов недоступно")
 
         # Проверка сертификатов
         logger.info("Запуск проверки SSL-сертификатов")
         cert_result = self.cert_checker.check_all()
-        expiring_count = cert_result["expiring_count"]
+        expiring_count = len(cert_result.get("expiring", []))
+        if cert_result.get("changes"):
+            changes_detected = True
         logger.info(f"Проверка сертификатов завершена: {expiring_count} сертификатов скоро истекают")
 
         # Проверка портов
@@ -79,11 +83,13 @@ class PerimeterMonitor:
             changes_detected = True
         logger.info(f"Проверка заголовков безопасности завершена: {issues_count} проблем обнаружено")
 
-        logger.info("Полный цикл проверок завершен")
+        if changes_detected:
+            logger.info("Обнаружены изменения в ходе полного цикла проверок")
+        else:
+            logger.info("Полный цикл проверок завершен без изменений")
 
     def setup_scheduling(self) -> None:
         logger.info("Настройка расписания проверок")
-        # Передаем функции напрямую как методы экземпляра и берем интервалы из конфига
         self.scheduler.add_task("run_ip_scan", self.run_ip_scan, config.IP_SCAN_INTERVAL, 'seconds')
         self.scheduler.add_task("check_websites", self.check_websites, config.WEBSITE_CHECK_INTERVAL, 'seconds')
         self.scheduler.add_task("check_certificates", self.check_certificates, config.CERTIFICATE_CHECK_INTERVAL, 'hours')
@@ -118,8 +124,4 @@ class PerimeterMonitor:
         self.headers_checker.check_all()
 
 if __name__ == "__main__":
-    # db = Database() #УДАЛЯЕМ
-    # db.initialize() #УДАЛЯЕМ
-    # monitor = PerimeterMonitor(db) #УДАЛЯЕМ
-    # monitor.run()  #УДАЛЯЕМ
-    pass # Запуск теперь происходит из run.py
+    pass  # Запуск теперь происходит из run.py

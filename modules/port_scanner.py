@@ -13,13 +13,13 @@ class PortScanner:
     def __init__(self, db, notifier, config_obj):
         self.db = db
         self.notifier = notifier
-        self.config = config_obj  # Добавляем config как атрибут
+        self.config = config_obj
         self.enabled = self.config.PORT_SCAN_ENABLED
         self.timeout = self.config.PORT_SCAN_TIMEOUT
-        self.threads = self.config.PORT_SCAN_THREADS  # Используем из config
+        self.threads = self.config.PORT_SCAN_THREADS
         self.queue = Queue()
         self.lock = threading.Lock()
-        self.results = []  # Инициализируем results здесь
+        self.results = []
 
     def _scan_port(self, ip: str, port: int) -> Dict[str, Any]:
         state = "closed"
@@ -64,25 +64,22 @@ class PortScanner:
             logger.info("Сканирование портов отключено")
             return []
         logger.info(f"Сканирование портов для {ip}")
-        self.results = []  # Сбрасываем результаты перед сканированием
+        self.results = []
         threads = []
         ports_to_scan = [int(p) for p in ports if p.strip().isdigit()]
         if not ports_to_scan:
             logger.warning(f"Нет валидных портов для сканирования {ip}")
             return []
 
-        # Заполняем очередь портами
         for port in ports_to_scan:
             self.queue.put(port)
 
-        # Запускаем потоки
         num_threads = min(self.threads, len(ports_to_scan))
         for _ in range(num_threads):
             t = threading.Thread(target=self._worker, args=(ip,), daemon=True)
             t.start()
             threads.append(t)
 
-        # Ждем завершения сканирования
         self.queue.join()
         for t in threads:
             t.join()
@@ -91,3 +88,42 @@ class PortScanner:
             self.db.save_port_scan({"ip": ip, "ports": self.results, "timestamp": time.time()})
         changes = [r for r in self.results if self._detect_change(self.db.get_last_port_scan(ip) or {}, r)]
         return changes
+
+    def scan_all(self) -> List[Dict[str, Any]]:
+        """Сканирует все IP-адреса из базы с их портами."""
+        if not self.enabled:
+            logger.info("Сканирование портов отключено")
+            return []
+        logger.info("Запуск полного сканирования портов для всех IP")
+        all_changes = []
+        all_ports = self.db.get_all_records('port_scanning')
+
+        # Группируем порты по IP
+        ip_ports = {}
+        for port in all_ports:
+            ip = port['ip_address']
+            if ip not in ip_ports:
+                ip_ports[ip] = []
+            ip_ports[ip].append(str(port['port']))
+
+        # Сканируем каждый IP многопоточно
+        threads = []
+        results_dict = {}  # Для хранения результатов по IP
+
+        def scan_ip(ip, ports):
+            results_dict[ip] = self.scan(ip, ports)
+
+        for ip, ports in ip_ports.items():
+            t = threading.Thread(target=scan_ip, args=(ip, ports), daemon=True)
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+
+        # Собираем все изменения
+        for ip, changes in results_dict.items():
+            all_changes.extend(changes)
+
+        logger.info(f"Полное сканирование портов завершено. Обнаружено {len(all_changes)} изменений.")
+        return all_changes
